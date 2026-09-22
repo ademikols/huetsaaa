@@ -20,24 +20,49 @@ dp = Dispatcher()
 
 games = {}
 
-CARDS = [
-    {"id": 1, "name": "Гоблин", "cost": 2, "atk": 8,  "hp": 15, "speed": 1},
-    {"id": 2, "name": "Лучник", "cost": 3, "atk": 12, "hp": 20, "speed": 1},
-    {"id": 3, "name": "Рыцарь", "cost": 4, "atk": 18, "hp": 35, "speed": 1},
-    {"id": 4, "name": "Гигант", "cost": 5, "atk": 25, "hp": 60, "speed": 1},
-]
+# Поле: 8 в ширину, 14 в высоту. Река на строках 6-7.
+FIELD_W = 8
+FIELD_H = 14
+
+# Карты Hog 2.6
+# target: 'all' | 'buildings' | 'ground'
+# range в клетках. speed в клетках/сек.
+CARDS = {
+    "hog":       {"name": "Хог Райдер",   "cost": 4, "type": "troop", "target": "buildings", "hp": 800, "atk": 150, "speed": 1.6, "range": 0.6, "hit_speed": 1.6, "count": 1},
+    "musketeer": {"name": "Мушкетёр",     "cost": 4, "type": "troop", "target": "all",       "hp": 500, "atk": 110, "speed": 1.0, "range": 5.5, "hit_speed": 1.0, "count": 1},
+    "ice_spirit":{"name": "Ледяной Дух",  "cost": 1, "type": "troop", "target": "all",       "hp": 100, "atk": 50,  "speed": 2.2, "range": 0.5, "hit_speed": 0.1, "count": 1, "freeze": 1.5},
+    "skeletons": {"name": "Скелеты",      "cost": 1, "type": "troop", "target": "all",       "hp": 60,  "atk": 30,  "speed": 1.6, "range": 0.5, "hit_speed": 1.0, "count": 3},
+    "ice_golem": {"name": "Ледяной Голем","cost": 2, "type": "troop", "target": "buildings", "hp": 600, "atk": 70,  "speed": 1.1, "range": 0.6, "hit_speed": 2.5, "count": 1, "death_slow": 2.0},
+    "cannon":    {"name": "Пушка",        "cost": 3, "type": "building","target": "ground",   "hp": 700, "atk": 130, "speed": 0,   "range": 5.5, "hit_speed": 1.0, "count": 1, "lifetime": 30},
+    "fireball":  {"name": "Огн. Шар",     "cost": 4, "type": "spell",  "target": "all",       "atk": 300, "radius": 2.5},
+    "log":       {"name": "Бревно",       "cost": 2, "type": "spell",  "target": "ground",    "atk": 100, "radius": 1.0},
+}
 
 def new_game(code, host_id, host_name):
     return {
         "code": code,
         "players": {
-            "white": {"user_id": host_id, "username": host_name, "elixir": 5.0, "tower_hp": 100},
-            "black": None,
+            "bottom": {"user_id": host_id, "username": host_name, "elixir": 5.0, "towers": make_towers("bottom")},
+            "top": None,
         },
         "units": [],
+        "effects": [],
+        "next_id": 1,
         "clients": set(),
         "last_tick": datetime.now().timestamp(),
+        "ended": False,
     }
+
+def make_towers(side):
+    if side == "bottom":
+        return [
+            {"kind": "princess", "x": 2, "y": 11.5, "hp": 1400, "max_hp": 1400, "atk": 80, "range": 5.5, "hit_speed": 0.8, "last_hit": 0},
+            {"kind": "princess", "x": 5, "y": 11.5, "hp": 1400, "max_hp": 1400, "atk": 80, "range": 5.5, "hit_speed": 0.8, "last_hit": 0},
+        ]
+    return [
+        {"kind": "princess", "x": 2, "y": 2.5, "hp": 1400, "max_hp": 1400, "atk": 80, "range": 5.5, "hit_speed": 0.8, "last_hit": 0},
+        {"kind": "princess", "x": 5, "y": 2.5, "hp": 1400, "max_hp": 1400, "atk": 80, "range": 5.5, "hit_speed": 0.8, "last_hit": 0},
+    ]
 
 def gen_code():
     while True:
@@ -57,14 +82,9 @@ async def api_join(request):
     g = games.get(code)
     if not g:
         return web.json_response({"ok": False, "error": "Игра не найдена"}, status=404)
-    if g["players"]["black"]:
+    if g["players"]["top"]:
         return web.json_response({"ok": False, "error": "Игра заполнена"}, status=400)
-    g["players"]["black"] = {
-        "user_id": d.get("user_id"),
-        "username": d.get("username") or "guest",
-        "elixir": 5.0,
-        "tower_hp": 100,
-    }
+    g["players"]["top"] = {"user_id": d.get("user_id"), "username": d.get("username") or "guest", "elixir": 5.0, "towers": make_towers("top")}
     return web.json_response({"ok": True, "code": code})
 
 async def ws_game(request):
@@ -86,45 +106,88 @@ async def ws_game(request):
                 data = json.loads(msg.data)
             except Exception:
                 continue
-            if data.get("type") == "play_card":
-                player = data.get("player")
-                card_id = data.get("card_id")
-                p = g["players"].get(player)
-                if not p:
-                    continue
-                card = None
-                for c in CARDS:
-                    if c["id"] == card_id:
-                        card = c
-                        break
-                if not card:
-                    continue
-                if p["elixir"] < card["cost"]:
-                    continue
-                p["elixir"] -= card["cost"]
-                start_pos = 1 if player == "white" else 8
-                g["units"].append({
-                    "owner": player,
-                    "pos": start_pos,
-                    "hp": card["hp"],
-                    "atk": card["atk"],
-                    "speed": card["speed"],
-                    "name": card["name"],
-                })
-                await broadcast(g, {"type": "state", "state": public_state(g)})
+            t = data.get("type")
+            if t == "play_card":
+                await handle_play_card(g, data)
     finally:
         g["clients"].discard(ws)
     return ws
 
+async def handle_play_card(g, data):
+    side = data.get("side")
+    card_id = data.get("card_id")
+    x = float(data.get("x", 0))
+    y = float(data.get("y", 0))
+    p = g["players"].get(side)
+    card = CARDS.get(card_id)
+    if not p or not card:
+        return
+    if p["elixir"] < card["cost"]:
+        return
+    # Проверка зоны: bottom играет в нижней половине, top — в верхней
+    if side == "bottom" and y < FIELD_H / 2 - 0.5:
+        return
+    if side == "top" and y > FIELD_H / 2 + 0.5:
+        return
+    p["elixir"] -= card["cost"]
+
+    if card["type"] == "spell":
+        # Мгновенный урон
+        radius = card["radius"]
+        for u in list(g["units"]):
+            dx = u["x"] - x
+            dy = u["y"] - y
+            if dx * dx + dy * dy <= radius * radius:
+                u["hp"] -= card["atk"]
+        g["effects"].append({"type": "spell", "card": card_id, "x": x, "y": y, "radius": radius, "life": 0.6})
+        await broadcast(g, {"type": "state", "state": public_state(g)})
+        return
+
+    # Войска / здание
+    count = card.get("count", 1)
+    for i in range(count):
+        offset = 0
+        if count > 1:
+            offset = (i - (count - 1) / 2) * 0.5
+        g["units"].append({
+            "id": g["next_id"],
+            "owner": side,
+            "card": card_id,
+            "x": x + offset,
+            "y": y,
+            "hp": card["hp"],
+            "max_hp": card["hp"],
+            "atk": card.get("atk", 0),
+            "speed": card.get("speed", 0),
+            "range": card.get("range", 0.5),
+            "hit_speed": card.get("hit_speed", 1.0),
+            "target": card.get("target", "all"),
+            "type": card.get("type", "troop"),
+            "lifetime": card.get("lifetime", 0),
+            "frozen": 0,
+            "last_hit": 0,
+        })
+        g["next_id"] += 1
+
+    await broadcast(g, {"type": "state", "state": public_state(g)})
+
 def public_state(g):
-    white_p = g["players"]["white"]
-    black_p = g["players"]["black"]
     return {
         "players": {
-            "white": {"username": white_p["username"], "elixir": round(white_p["elixir"], 1), "tower_hp": white_p["tower_hp"]} if white_p else None,
-            "black": {"username": black_p["username"], "elixir": round(black_p["elixir"], 1), "tower_hp": black_p["tower_hp"]} if black_p else None,
+            "bottom": g["players"]["bottom"] and {
+                "username": g["players"]["bottom"]["username"],
+                "elixir": round(g["players"]["bottom"]["elixir"], 1),
+                "towers": g["players"]["bottom"]["towers"],
+            },
+            "top": g["players"]["top"] and {
+                "username": g["players"]["top"]["username"],
+                "elixir": round(g["players"]["top"]["elixir"], 1),
+                "towers": g["players"]["top"]["towers"],
+            },
         },
         "units": g["units"],
+        "effects": g["effects"],
+        "ended": g["ended"],
     }
 
 async def broadcast(g, data, exclude=None):
@@ -136,73 +199,150 @@ async def broadcast(g, data, exclude=None):
         except Exception:
             g["clients"].discard(c)
 
+def dist(a, b):
+    dx = a["x"] - b["x"]
+    dy = a["y"] - b["y"]
+    return (dx * dx + dy * dy) ** 0.5
+
+def find_target(g, u):
+    """Найти ближайшую цель для юнита с учётом его target-фильтра."""
+    enemies = []
+    opp = "top" if u["owner"] == "bottom" else "bottom"
+    if g["players"][opp]:
+        for t in g["players"][opp]["towers"]:
+            enemies.append(t)
+    for other in g["units"]:
+        if other["owner"] == u["owner"]:
+            continue
+        if other["type"] == "building":
+            enemies.append(other)
+            continue
+        # Юнит-цель
+        if u["target"] == "buildings":
+            continue
+        if u["target"] == "ground" and other.get("air"):
+            continue
+        enemies.append(other)
+    if not enemies:
+        return None
+    return min(enemies, key=lambda e: dist(u, e))
+
+async def tick_game(g, dt):
+    # Эликсир
+    for side in ["bottom", "top"]:
+        p = g["players"][side]
+        if p:
+            p["elixir"] = min(10.0, p["elixir"] + dt * 1 / 2.8)  # ~2.8 сек за 1 эликсир
+
+    # Обновление эффектов
+    for e in g["effects"]:
+        e["life"] -= dt
+    g["effects"] = [e for e in g["effects"] if e["life"] > 0]
+
+    # Юниты
+    alive = []
+    for u in g["units"]:
+        if u["hp"] <= 0:
+            continue
+        if u.get("lifetime"):
+            u["lifetime"] -= dt
+            if u["lifetime"] <= 0:
+                continue
+        if u["frozen"] > 0:
+            u["frozen"] -= dt
+            alive.append(u)
+            continue
+        if u["speed"] == 0:
+            # Здание — только атакует
+            u["last_hit"] -= dt
+            if u["last_hit"] <= 0:
+                tgt = find_target(g, u)
+                if tgt and dist(u, tgt) <= u["range"]:
+                    tgt["hp"] -= u["atk"]
+                    u["last_hit"] = u["hit_speed"]
+            alive.append(u)
+            continue
+
+        # Движение
+        tgt = find_target(g, u)
+        if tgt:
+            d = dist(u, tgt)
+            if d > u["range"]:
+                # Идём к цели
+                dx = tgt["x"] - u["x"]
+                dy = tgt["y"] - u["y"]
+                if d > 0:
+                    step = u["speed"] * dt
+                    u["x"] += dx / d * step
+                    u["y"] += dy / d * step
+            else:
+                # Атака
+                u["last_hit"] -= dt
+                if u["last_hit"] <= 0:
+                    tgt["hp"] -= u["atk"]
+                    u["last_hit"] = u["hit_speed"]
+                    if u["card"] == "ice_spirit":
+                        tgt["frozen"] = 1.5
+                        u["hp"] = 0  # умирает при атаке
+        alive.append(u)
+
+    # Смерть ледяного голема — слоу
+    for u in g["units"]:
+        if u["hp"] <= 0 and u["card"] == "ice_golem":
+            g["effects"].append({"type": "slow", "x": u["x"], "y": u["y"], "radius": 2.0, "life": 0.5})
+            for other in g["units"]:
+                if other["owner"] != u["owner"] and other["hp"] > 0:
+                    if dist(u, other) <= 2.0:
+                        other["frozen"] = max(other.get("frozen", 0), 2.0)
+
+    g["units"] = [u for u in alive if u["hp"] > 0]
+
+    # Башни стреляют
+    for side in ["bottom", "top"]:
+        p = g["players"][side]
+        if not p:
+            continue
+        for t in p["towers"]:
+            if t["hp"] <= 0:
+                continue
+            t["last_hit"] -= dt
+            if t["last_hit"] <= 0:
+                # Найти ближайшего врага в радиусе
+                opp = "top" if side == "bottom" else "bottom"
+                targets = [u for u in g["units"] if u["owner"] == opp and u["hp"] > 0]
+                targets = [u for u in targets if dist(t, u) <= t["range"]]
+                if targets:
+                    closest = min(targets, key=lambda u: dist(t, u))
+                    closest["hp"] -= t["atk"]
+                    t["last_hit"] = t["hit_speed"]
+
+    # Проверка конца
+    b_alive = any(t["hp"] > 0 for t in g["players"]["bottom"]["towers"]) if g["players"]["bottom"] else True
+    t_alive = any(t["hp"] > 0 for t in g["players"]["top"]["towers"]) if g["players"]["top"] else True
+    if not b_alive or not t_alive:
+        g["ended"] = True
+        winner = "top" if not b_alive else "bottom"
+        await broadcast(g, {"type": "gameover", "winner": winner})
+        return False
+    return True
+
 async def game_loop():
-    sides = ["white", "black"]
     while True:
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(0.2)
         now = datetime.now().timestamp()
         for code in list(games.keys()):
             g = games.get(code)
-            if not g:
+            if not g or g["ended"]:
                 continue
             dt = now - g["last_tick"]
             g["last_tick"] = now
-            # Эликсир
-            for side in sides:
-                p = g["players"][side]
-                if p:
-                    p["elixir"] = min(10.0, p["elixir"] + dt * 0.5)
-            # Движение
-            for u in g["units"]:
-                if u["owner"] == "white":
-                    u["pos"] += u["speed"]
-                else:
-                    u["pos"] -= u["speed"]
-            # Бой
-            dead = set()
-            n = len(g["units"])
-            for i in range(n):
-                if i in dead:
-                    continue
-                a = g["units"][i]
-                for j in range(i + 1, n):
-                    if j in dead:
-                        continue
-                    b = g["units"][j]
-                    if a["owner"] == b["owner"]:
-                        continue
-                    if abs(a["pos"] - b["pos"]) <= 1:
-                        b["hp"] -= a["atk"]
-                        a["hp"] -= b["atk"]
-                        if b["hp"] <= 0:
-                            dead.add(j)
-                        if a["hp"] <= 0:
-                            dead.add(i)
-                            break
-            # Башни
-            for i in range(len(g["units"])):
-                if i in dead:
-                    continue
-                u = g["units"][i]
-                if u["owner"] == "white" and u["pos"] >= 9:
-                    if g["players"]["black"]:
-                        g["players"]["black"]["tower_hp"] -= u["atk"]
-                    dead.add(i)
-                elif u["owner"] == "black" and u["pos"] <= 0:
-                    if g["players"]["white"]:
-                        g["players"]["white"]["tower_hp"] -= u["atk"]
-                    dead.add(i)
-            g["units"] = [u for i, u in enumerate(g["units"]) if i not in dead]
-            # Проверка конца
-            w_hp = g["players"]["white"]["tower_hp"] if g["players"]["white"] else 100
-            b_hp = g["players"]["black"]["tower_hp"] if g["players"]["black"] else 100
-            if w_hp <= 0 or b_hp <= 0:
-                winner = "black" if w_hp <= 0 else "white"
-                await broadcast(g, {"type": "gameover", "winner": winner})
-                games.pop(code, None)
-                continue
+            if dt > 1.0:
+                dt = 0.2
+            cont = await tick_game(g, dt)
             if g["clients"]:
                 await broadcast(g, {"type": "state", "state": public_state(g)})
+            if not cont:
+                games.pop(code, None)
 
 async def handle_index(request):
     if os.path.exists("app.html"):
@@ -225,9 +365,9 @@ async def start_web():
 @dp.message(Command("start"))
 async def start(message: types.Message):
     kb = InlineKeyboardMarkup(inline_keyboard=[[
-        InlineKeyboardButton(text="⚔ Играть", web_app=WebAppInfo(url=f"{WEB_APP_URL}/app.html"))
+        InlineKeyboardButton(text="⚔ Hog 2.6", web_app=WebAppInfo(url=f"{WEB_APP_URL}/app.html"))
     ]])
-    await message.answer("⚔ Clash Mini\n\nСоздай игру или присоединись по коду.", reply_markup=kb)
+    await message.answer("⚔ Hog 2.6 Mini\n\nСоздай игру или присоединись по коду.", reply_markup=kb)
 
 async def main():
     await bot.delete_webhook(drop_pending_updates=True)
