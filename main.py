@@ -2,6 +2,7 @@ import asyncio
 import json
 import sqlite3
 import os
+import random
 from datetime import datetime
 from aiohttp import web
 from aiogram import Bot, Dispatcher, types
@@ -21,7 +22,7 @@ bot = Bot(token=TOKEN)
 dp = Dispatcher()
 kino = KinoIs(lang="ru")
 
-# ---------- База данных ----------
+# ---------- База ----------
 def init_db():
     conn = sqlite3.connect("movies.db")
     c = conn.cursor()
@@ -29,20 +30,27 @@ def init_db():
                  (id INTEGER PRIMARY KEY, user_id INTEGER, link TEXT, created_at TIMESTAMP, status TEXT)''')
     c.execute('''CREATE TABLE IF NOT EXISTS users
                  (user_id INTEGER PRIMARY KEY, username TEXT, created_at TIMESTAMP)''')
-    c.execute('''CREATE TABLE IF NOT EXISTS admins
-                 (user_id INTEGER PRIMARY KEY)''')
+    c.execute('''CREATE TABLE IF NOT EXISTS admins (user_id INTEGER PRIMARY KEY)''')
     conn.commit()
     conn.close()
 
 def add_user(user_id, username):
     conn = sqlite3.connect("movies.db")
     c = conn.cursor()
-    c.execute("INSERT OR IGNORE INTO users VALUES (?, ?, ?)",
-              (user_id, username, datetime.now()))
+    c.execute("INSERT OR IGNORE INTO users VALUES (?, ?, ?)", (user_id, username, datetime.now()))
     conn.commit()
     conn.close()
 
-# ---------- API для Mini App ----------
+# ---------- Комнаты (в памяти) ----------
+rooms_store = {}
+
+def gen_code():
+    while True:
+        code = str(random.randint(100000, 999999))
+        if code not in rooms_store:
+            return code
+
+# ---------- API ----------
 async def handle_catalog(request):
     q = request.query.get("q", "").strip()
     genre = request.query.get("genre", "").strip()
@@ -50,24 +58,72 @@ async def handle_catalog(request):
     try:
         if q:
             data = kino.search(q)
-            films = data.get("films", [])
+            films = data.get("films", []) if isinstance(data, dict) else data
         else:
             params = {"page": page}
             if genre:
                 params["genre"] = genre
             data = kino.catalog(**params)
-            films = data.get("films", [])
+            films = data.get("films", []) if isinstance(data, dict) else data
         return web.json_response({"ok": True, "films": films})
     except Exception as e:
         return web.json_response({"ok": False, "error": str(e)}, status=500)
 
 async def handle_film(request):
-    film_id = request.match_info.get("film_id")
+    fid = request.match_info.get("film_id")
     try:
-        data = kino.get_film(film_id)
-        return web.json_response({"ok": True, "film": data.get("film", {})})
+        data = kino.get_film(fid)
+        film = data.get("film", {}) if isinstance(data, dict) else data
+        return web.json_response({"ok": True, "film": film})
     except Exception as e:
         return web.json_response({"ok": False, "error": str(e)}, status=500)
+
+async def handle_session_create(request):
+    try:
+        data = await request.json()
+    except Exception:
+        data = {}
+    code = gen_code()
+    session = {
+        "code": code,
+        "name": data.get("name") or "Комната",
+        "film": data.get("film"),
+        "host_id": data.get("user_id"),
+        "created_at": datetime.now().isoformat(),
+        "participants": [{
+            "user_id": data.get("user_id"),
+            "username": data.get("username") or "guest",
+            "joined_at": datetime.now().isoformat()
+        }]
+    }
+    rooms_store[code] = session
+    print(f"🎬 Комната {code} создана: {session['name']}", flush=True)
+    return web.json_response({"ok": True, "code": code, "session": session})
+
+async def handle_session_join(request):
+    try:
+        data = await request.json()
+    except Exception:
+        data = {}
+    code = str(data.get("code", "")).strip()
+    session = rooms_store.get(code)
+    if not session:
+        return web.json_response({"ok": False, "error": "Комната не найдена"}, status=404)
+    uid = data.get("user_id")
+    if not any(p.get("user_id") == uid for p in session["participants"]):
+        session["participants"].append({
+            "user_id": uid,
+            "username": data.get("username") or "guest",
+            "joined_at": datetime.now().isoformat()
+        })
+    return web.json_response({"ok": True, "session": session})
+
+async def handle_session_get(request):
+    code = request.match_info.get("code")
+    session = rooms_store.get(code)
+    if not session:
+        return web.json_response({"ok": False, "error": "Комната не найдена"}, status=404)
+    return web.json_response({"ok": True, "session": session})
 
 async def handle_index(request):
     if os.path.exists("app.html"):
@@ -84,10 +140,12 @@ async def start_web():
     app.router.add_get("/health", handle_health)
     app.router.add_get("/api/catalog", handle_catalog)
     app.router.add_get("/api/film/{film_id}", handle_film)
+    app.router.add_post("/api/session/create", handle_session_create)
+    app.router.add_post("/api/session/join", handle_session_join)
+    app.router.add_get("/api/session/{code}", handle_session_get)
     runner = web.AppRunner(app)
     await runner.setup()
-    site = web.TCPSite(runner, "0.0.0.0", PORT)
-    await site.start()
+    await web.TCPSite(runner, "0.0.0.0", PORT).start()
     print(f"🔧 Веб-сервер слушает 0.0.0.0:{PORT}", flush=True)
 
 # ---------- Бот ----------
@@ -98,43 +156,12 @@ async def start(message: types.Message):
         [InlineKeyboardButton(
             text="🎬 Открыть кинотеатр",
             web_app=WebAppInfo(url=f"{WEB_APP_URL}/app.html")
-        )],
-        [InlineKeyboardButton(text="📋 Мои сессии", callback_data="my_sessions")],
-        [InlineKeyboardButton(text="❓ Помощь", callback_data="help")]
+        )]
     ])
     await message.answer(
-        "🎭 Добро пожаловать в кинотеатр!\n\n"
-        "Выбирай фильм из каталога и смотри вместе с друзьями.\n\n"
-        "Жми кнопку ниже 👇",
+        "🎭 Кинотеатр\n\nВыбирай фильм из каталога и создавай комнату для совместного просмотра.",
         reply_markup=kb
     )
-
-@dp.callback_query(lambda c: c.data == "my_sessions")
-async def my_sessions(callback: types.CallbackQuery):
-    conn = sqlite3.connect("movies.db")
-    c = conn.cursor()
-    c.execute("SELECT id, link, created_at FROM sessions WHERE user_id=? LIMIT 10", (callback.from_user.id,))
-    sessions = c.fetchall()
-    conn.close()
-    if not sessions:
-        await callback.message.answer("У тебя еще нет сессий 😔")
-    else:
-        text = "📋 МОИ СЕССИИ:\n━━━━━━━━━━━━━━━━\n"
-        for s in sessions:
-            text += f"ID: {s[0]} | {str(s[1])[:30]}... | {str(s[2])[:10]}\n"
-        await callback.message.answer(text)
-    await callback.answer()
-
-@dp.callback_query(lambda c: c.data == "help")
-async def help_handler(callback: types.CallbackQuery):
-    await callback.message.answer(
-        "❓ КАК ПОЛЬЗОВАТЬСЯ:\n\n"
-        "1️⃣ Открой кинотеатр\n"
-        "2️⃣ Найди фильм в каталоге\n"
-        "3️⃣ Нажми «Смотреть вместе»\n"
-        "4️⃣ Поделись ссылкой с друзьями"
-    )
-    await callback.answer()
 
 async def main():
     init_db()
