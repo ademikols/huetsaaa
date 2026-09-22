@@ -33,7 +33,6 @@
   .card:active{border-color:#fff}
   .card img{width:100%;height:100%;object-fit:cover;display:block}
   .card .t{position:absolute;bottom:0;left:0;right:0;padding:14px 6px 6px;background:linear-gradient(transparent,#000);font-size:10.5px;line-height:1.15;font-weight:600;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-  .card .r{position:absolute;top:5px;right:5px;background:#000;border:1px solid #fff;padding:2px 5px;font-size:10px;font-weight:700}
   .card .y{position:absolute;top:5px;left:5px;background:#000;border:1px solid #fff;padding:2px 5px;font-size:10px;font-weight:700}
 
   .msg{text-align:center;padding:50px 20px;color:#666;font-size:12px;letter-spacing:2px}
@@ -206,21 +205,17 @@ function goBack() {
   else go('library');
 }
 
-// ===== ПОЛЯ ФИЛЬМА (IMDbOT формат) =====
-const fId = f => f['#IMDB_ID'] || f.imdbID || f.imdb_id || f.id || f.tt || '';
-const fName = f => f['#TITLE'] || f.Title || f.title || f.name || f.originalTitle || '—';
+// ===== iTunes Search API поля =====
+const fId = f => f.trackId || f.collectionId || '';
+const fName = f => f.trackName || f.collectionName || '—';
 const fPoster = f => {
-  const p = f['#IMG_POSTER'] || f.Poster || f.poster || f.image || f.posterUrl || '';
-  if (typeof p === 'string' && p.startsWith('http')) return p;
-  if (typeof p === 'object' && p?.url) return p.url;
-  return '';
+  const url = f.artworkUrl100 || f.artworkUrl60 || '';
+  return url ? url.replace(/\/\d+x\d+bb\./, '/600x600bb.') : '';
 };
-const fRating = f => {
-  const r = f['#RANK'] || f.imdbRating || f.rating || f.Rating;
-  return r && r !== 'N/A' && !isNaN(Number(r)) ? Number(r).toFixed(1) : '';
-};
-const fYear = f => f['#YEAR'] || f.Year || f.year || '';
-const fDesc = f => f['#ACTORS'] || f.description || f.Plot || f.plot || f.overview || '';
+const fYear = f => f.releaseDate ? String(f.releaseDate).slice(0,4) : '';
+const fDesc = f => f.longDescription || f.shortDescription || f.description || 'Описание недоступно.';
+const fGenre = f => f.primaryGenreName || '';
+const fCountry = f => f.country || '';
 
 const GENRES = ['Все','боевик','комедия','драма','фантастика','ужасы','триллер','мелодрама','детектив','приключения','фэнтези','аниме'];
 
@@ -230,8 +225,9 @@ function renderGenres() {
   el.querySelectorAll('.genre').forEach(b => b.onclick = () => {
     el.querySelectorAll('.genre').forEach(x=>x.classList.remove('active'));
     b.classList.add('active');
-    // жанры в этом API не фильтруются — просто подсказка пользователю, что ввести
-    document.getElementById('q').value = b.dataset.g || '';
+    // iTunes ищет по термину — вставляем жанр в поиск
+    if (b.dataset.g) { document.getElementById('q').value = b.dataset.g; doSearch(); }
+    else { document.getElementById('q').value = ''; }
   });
 }
 
@@ -262,10 +258,9 @@ function renderFilms(films) {
   const body = document.getElementById('catalogBody');
   if (!films || !films.length) { body.innerHTML = '<div class="msg">НИЧЕГО НЕ НАЙДЕНО</div>'; return; }
   body.innerHTML = '<div class="grid">' + films.map((f,i) => {
-    const p = fPoster(f), n = fName(f), r = fRating(f), y = fYear(f);
+    const p = fPoster(f), n = fName(f), y = fYear(f);
     return `<div class="card" data-i="${i}">
       ${p?`<img src="${p}" loading="lazy" onerror="this.style.display='none'">`:''}
-      ${r?`<div class="r">★${r}</div>`:''}
       ${y?`<div class="y">${y}</div>`:''}
       <div class="t">${n}</div>
     </div>`;
@@ -273,12 +268,13 @@ function renderFilms(films) {
   body.querySelectorAll('.card').forEach(c => c.onclick = () => openFilm(films[Number(c.dataset.i)]));
 }
 
-async function openFilm(film) {
+function openFilm(film) {
   currentFilm = film;
   document.getElementById('fPoster').src = fPoster(film);
   document.getElementById('fTitle').textContent = fName(film);
-  document.getElementById('fMeta').textContent = [fYear(film), fRating(film)?'★ '+fRating(film):''].filter(Boolean).join('  ·  ');
-  document.getElementById('fPlot').textContent = fDesc(film) || 'Описание недоступно.';
+  const meta = [fYear(film), fGenre(film), fCountry(film)].filter(Boolean).join('  ·  ');
+  document.getElementById('fMeta').textContent = meta || '—';
+  document.getElementById('fPlot').textContent = fDesc(film);
   go('film');
 }
 
