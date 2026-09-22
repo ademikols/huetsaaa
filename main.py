@@ -8,6 +8,7 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 from dotenv import load_dotenv
+from kino_is import KinoIs
 
 load_dotenv()
 
@@ -18,6 +19,7 @@ PORT = int(os.getenv("PORT", "3000"))
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
+kino = KinoIs(lang="ru")
 
 # ---------- База данных ----------
 def init_db():
@@ -40,25 +42,33 @@ def add_user(user_id, username):
     conn.commit()
     conn.close()
 
-def create_session(user_id, link):
-    conn = sqlite3.connect("movies.db")
-    c = conn.cursor()
-    c.execute("INSERT INTO sessions (user_id, link, created_at, status) VALUES (?, ?, ?, ?)",
-              (user_id, link, datetime.now(), "active"))
-    conn.commit()
-    session_id = c.lastrowid
-    conn.close()
-    return session_id
+# ---------- API для Mini App ----------
+async def handle_catalog(request):
+    q = request.query.get("q", "").strip()
+    genre = request.query.get("genre", "").strip()
+    page = int(request.query.get("page", "1"))
+    try:
+        if q:
+            data = kino.search(q)
+            films = data.get("films", [])
+        else:
+            params = {"page": page}
+            if genre:
+                params["genre"] = genre
+            data = kino.catalog(**params)
+            films = data.get("films", [])
+        return web.json_response({"ok": True, "films": films})
+    except Exception as e:
+        return web.json_response({"ok": False, "error": str(e)}, status=500)
 
-def get_session(session_id):
-    conn = sqlite3.connect("movies.db")
-    c = conn.cursor()
-    c.execute("SELECT * FROM sessions WHERE id=?", (session_id,))
-    result = c.fetchone()
-    conn.close()
-    return result
+async def handle_film(request):
+    film_id = request.match_info.get("film_id")
+    try:
+        data = kino.get_film(film_id)
+        return web.json_response({"ok": True, "film": data.get("film", {})})
+    except Exception as e:
+        return web.json_response({"ok": False, "error": str(e)}, status=500)
 
-# ---------- Веб-сервер для Mini App ----------
 async def handle_index(request):
     if os.path.exists("app.html"):
         return web.FileResponse("app.html")
@@ -72,20 +82,19 @@ async def start_web():
     app.router.add_get("/", handle_index)
     app.router.add_get("/app.html", handle_index)
     app.router.add_get("/health", handle_health)
+    app.router.add_get("/api/catalog", handle_catalog)
+    app.router.add_get("/api/film/{film_id}", handle_film)
     runner = web.AppRunner(app)
     await runner.setup()
     site = web.TCPSite(runner, "0.0.0.0", PORT)
     await site.start()
     print(f"🔧 Веб-сервер слушает 0.0.0.0:{PORT}", flush=True)
 
-# ---------- Хендлеры бота ----------
+# ---------- Бот ----------
 @dp.message(Command("start"))
 async def start(message: types.Message):
-    user_id = message.from_user.id
-    username = message.from_user.username or "unknown"
-    add_user(user_id, username)
-
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+    add_user(message.from_user.id, message.from_user.username or "unknown")
+    kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(
             text="🎬 Открыть кинотеатр",
             web_app=WebAppInfo(url=f"{WEB_APP_URL}/app.html")
@@ -93,130 +102,40 @@ async def start(message: types.Message):
         [InlineKeyboardButton(text="📋 Мои сессии", callback_data="my_sessions")],
         [InlineKeyboardButton(text="❓ Помощь", callback_data="help")]
     ])
-
     await message.answer(
         "🎭 Добро пожаловать в кинотеатр!\n\n"
-        "Смотрите фильмы вместе с друзьями через ссылку из YouTube, ВКонтакте или RuTube.\n\n"
+        "Выбирай фильм из каталога и смотри вместе с друзьями.\n\n"
         "Жми кнопку ниже 👇",
-        reply_markup=keyboard
+        reply_markup=kb
     )
-
-@dp.message(Command("admin"))
-async def admin_panel(message: types.Message):
-    if message.from_user.id != ADMIN_ID:
-        await message.answer("❌ Доступ запрещен")
-        return
-
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="📊 Статистика", callback_data="admin_stats")],
-        [InlineKeyboardButton(text="👥 Пользователи", callback_data="admin_users")],
-        [InlineKeyboardButton(text="🎬 Сессии", callback_data="admin_sessions")],
-        [InlineKeyboardButton(text="📤 Рассылка", callback_data="admin_broadcast")]
-    ])
-
-    await message.answer("⚙ Админ-панель:", reply_markup=keyboard)
-
-@dp.callback_query(lambda c: c.data == "admin_stats")
-async def admin_stats(callback: types.CallbackQuery):
-    if callback.from_user.id != ADMIN_ID:
-        await callback.answer("❌ Доступ запрещен", show_alert=True)
-        return
-
-    conn = sqlite3.connect("movies.db")
-    c = conn.cursor()
-    c.execute("SELECT COUNT(*) FROM users")
-    users_count = c.fetchone()[0]
-    c.execute("SELECT COUNT(*) FROM sessions WHERE status='active'")
-    sessions_count = c.fetchone()[0]
-    conn.close()
-
-    stats = f"""
-📊 СТАТИСТИКА:
-━━━━━━━━━━━━━━━━
-👥 Всего пользователей: {users_count}
-🎬 Активных сессий: {sessions_count}
-⏰ Дата: {datetime.now().strftime("%d.%m.%Y %H:%M")}
-"""
-    await callback.message.answer(stats)
-    await callback.answer()
-
-@dp.callback_query(lambda c: c.data == "admin_users")
-async def admin_users(callback: types.CallbackQuery):
-    if callback.from_user.id != ADMIN_ID:
-        await callback.answer("❌ Доступ запрещен", show_alert=True)
-        return
-
-    conn = sqlite3.connect("movies.db")
-    c = conn.cursor()
-    c.execute("SELECT user_id, username, created_at FROM users LIMIT 20")
-    users = c.fetchall()
-    conn.close()
-
-    text = "👥 ПОСЛЕДНИЕ ПОЛЬЗОВАТЕЛИ:\n━━━━━━━━━━━━━━━━\n"
-    for user in users:
-        text += f"ID: {user[0]} | @{user[1]} | {str(user[2])[:10]}\n"
-
-    await callback.message.answer(text)
-    await callback.answer()
 
 @dp.callback_query(lambda c: c.data == "my_sessions")
 async def my_sessions(callback: types.CallbackQuery):
-    user_id = callback.from_user.id
     conn = sqlite3.connect("movies.db")
     c = conn.cursor()
-    c.execute("SELECT id, link, created_at FROM sessions WHERE user_id=? LIMIT 10", (user_id,))
+    c.execute("SELECT id, link, created_at FROM sessions WHERE user_id=? LIMIT 10", (callback.from_user.id,))
     sessions = c.fetchall()
     conn.close()
-
     if not sessions:
         await callback.message.answer("У тебя еще нет сессий 😔")
-        await callback.answer()
-        return
-
-    text = "📋 МОИ СЕССИИ:\n━━━━━━━━━━━━━━━━\n"
-    for session in sessions:
-        text += f"ID: {session[0]} | {str(session[1])[:30]}... | {str(session[2])[:10]}\n"
-
-    await callback.message.answer(text)
+    else:
+        text = "📋 МОИ СЕССИИ:\n━━━━━━━━━━━━━━━━\n"
+        for s in sessions:
+            text += f"ID: {s[0]} | {str(s[1])[:30]}... | {str(s[2])[:10]}\n"
+        await callback.message.answer(text)
     await callback.answer()
 
 @dp.callback_query(lambda c: c.data == "help")
 async def help_handler(callback: types.CallbackQuery):
-    help_text = """
-❓ КАК ПОЛЬЗОВАТЬСЯ:
-
-1⃣ Жми "🎬 Открыть кинотеатр"
-2⃣ Вставь ссылку на видео (YouTube/VK/RuTube)
-3⃣ Получишь код сессии - поделись с друзьями
-4⃣ Друзья введут код и вы будете смотреть вместе
-
-🎬 ПОДДЕРЖИВАЕМЫЕ ИСТОЧНИКИ:
-• YouTube (youtube.com, youtu.be)
-• ВКонтакте (vk.com/video)
-• RuTube (rutube.ru)
-
-💡 СОВЕТЫ:
-✓ Один человек создает сессию
-✓ Остальные присоединяются по коду
-✓ Синхронизация видео в реальном времени
-✓ Чат для комментариев (скоро)
-
-❓ ВОПРОСЫ?
-Пишите @support
-"""
-    await callback.message.answer(help_text)
+    await callback.message.answer(
+        "❓ КАК ПОЛЬЗОВАТЬСЯ:\n\n"
+        "1️⃣ Открой кинотеатр\n"
+        "2️⃣ Найди фильм в каталоге\n"
+        "3️⃣ Нажми «Смотреть вместе»\n"
+        "4️⃣ Поделись ссылкой с друзьями"
+    )
     await callback.answer()
 
-@dp.callback_query(lambda c: c.data == "admin_broadcast")
-async def admin_broadcast(callback: types.CallbackQuery):
-    if callback.from_user.id != ADMIN_ID:
-        await callback.answer("❌ Доступ запрещен", show_alert=True)
-        return
-
-    await callback.message.answer("📤 Введи сообщение для рассылки (или /cancel):")
-    await callback.answer()
-
-# ---------- Запуск ----------
 async def main():
     init_db()
     await bot.delete_webhook(drop_pending_updates=True)
