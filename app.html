@@ -4,337 +4,160 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🎬 Кинотеатр</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #000;
-            color: #fff;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
+            background: #000; color: #fff; min-height: 100vh;
+            display: flex; flex-direction: column;
         }
+        .container { max-width: 100%; padding: 20px; flex: 1; display: flex; flex-direction: column; }
+        .header { text-align: center; margin-bottom: 20px; padding: 20px 0; border-bottom: 2px solid #333; }
+        .header h1 { font-size: 32px; font-weight: 700; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 2px; }
+        .header p { color: #999; font-size: 14px; }
 
-        .container {
-            max-width: 100%;
-            padding: 20px;
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
-            padding: 20px 0;
-            border-bottom: 2px solid #333;
-        }
-
-        .header h1 {
-            font-size: 32px;
-            font-weight: 700;
-            margin-bottom: 5px;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-        }
-
-        .header p {
-            color: #999;
-            font-size: 14px;
-        }
-
-        .mode-selector {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 30px;
-            justify-content: center;
-        }
-
+        .mode-selector { display: flex; gap: 8px; margin-bottom: 20px; justify-content: center; flex-wrap: wrap; }
         .mode-btn {
-            padding: 12px 24px;
-            border: 2px solid #fff;
-            background: transparent;
-            color: #fff;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 14px;
-            transition: all 0.3s;
-            border-radius: 4px;
+            padding: 10px 16px; border: 2px solid #fff; background: transparent; color: #fff;
+            cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.3s; border-radius: 4px;
         }
+        .mode-btn.active { background: #fff; color: #000; }
+        .mode-btn:hover { border-color: #fff; transform: translateY(-2px); }
 
-        .mode-btn.active {
-            background: #fff;
-            color: #000;
-        }
+        .section { display: none; }
+        .section.active { display: flex; flex-direction: column; }
 
-        .mode-btn:hover {
-            border-color: #fff;
-            transform: translateY(-2px);
-        }
-
-        .section {
-            display: none;
-        }
-
-        .section.active {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .input-group {
-            margin-bottom: 20px;
-        }
-
+        .input-group { margin-bottom: 20px; }
         .input-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-            font-size: 14px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: #ccc;
+            display: block; margin-bottom: 8px; font-weight: 600; font-size: 14px;
+            text-transform: uppercase; letter-spacing: 1px; color: #ccc;
         }
-
-        .input-group input,
-        .input-group textarea {
-            width: 100%;
-            padding: 14px;
-            border: 2px solid #333;
-            background: #111;
-            color: #fff;
-            font-family: inherit;
-            border-radius: 4px;
-            font-size: 14px;
-            transition: border-color 0.3s;
+        .input-group input, .input-group textarea {
+            width: 100%; padding: 14px; border: 2px solid #333; background: #111; color: #fff;
+            font-family: inherit; border-radius: 4px; font-size: 14px; transition: border-color 0.3s;
         }
-
-        .input-group input:focus,
-        .input-group textarea:focus {
-            outline: none;
-            border-color: #fff;
-            background: #1a1a1a;
-        }
+        .input-group input:focus { outline: none; border-color: #fff; background: #1a1a1a; }
 
         .button {
-            padding: 14px 30px;
-            background: #fff;
-            color: #000;
-            border: none;
-            font-weight: 700;
-            font-size: 16px;
-            cursor: pointer;
-            border-radius: 4px;
-            transition: all 0.3s;
-            text-transform: uppercase;
-            letter-spacing: 1px;
+            padding: 14px 30px; background: #fff; color: #000; border: none;
+            font-weight: 700; font-size: 16px; cursor: pointer; border-radius: 4px;
+            transition: all 0.3s; text-transform: uppercase; letter-spacing: 1px;
         }
-
-        .button:hover {
-            background: #ddd;
-            transform: translateY(-2px);
-        }
-
-        .button.secondary {
-            background: transparent;
-            color: #fff;
-            border: 2px solid #fff;
-        }
-
-        .button.secondary:hover {
-            background: #fff;
-            color: #000;
-        }
-
-        .button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
+        .button:hover { background: #ddd; transform: translateY(-2px); }
+        .button.secondary { background: transparent; color: #fff; border: 2px solid #fff; }
+        .button.secondary:hover { background: #fff; color: #000; }
+        .button:disabled { opacity: 0.5; cursor: not-allowed; }
 
         .video-player {
-            width: 100%;
-            aspect-ratio: 16 / 9;
-            background: #111;
-            border: 2px solid #333;
-            margin-bottom: 20px;
-            border-radius: 4px;
-            overflow: hidden;
+            width: 100%; aspect-ratio: 16 / 9; background: #111; border: 2px solid #333;
+            margin-bottom: 20px; border-radius: 4px; overflow: hidden;
         }
-
-        .video-info {
-            background: #111;
-            padding: 20px;
-            border: 2px solid #333;
-            margin-bottom: 20px;
-            border-radius: 4px;
-        }
-
-        .video-info h2 {
-            font-size: 18px;
-            margin-bottom: 10px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .video-info p {
-            color: #999;
-            font-size: 14px;
-            line-height: 1.6;
-        }
+        .video-info { background: #111; padding: 20px; border: 2px solid #333; margin-bottom: 20px; border-radius: 4px; }
+        .video-info h2 { font-size: 18px; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
+        .video-info p { color: #999; font-size: 14px; line-height: 1.6; }
 
         .code-display {
-            background: #111;
-            padding: 20px;
-            border: 2px solid #fff;
-            border-radius: 4px;
-            text-align: center;
-            margin-bottom: 20px;
+            background: #111; padding: 20px; border: 2px solid #fff;
+            border-radius: 4px; text-align: center; margin-bottom: 20px;
         }
-
-        .code-display .label {
-            color: #999;
-            font-size: 12px;
-            text-transform: uppercase;
-            margin-bottom: 10px;
-        }
-
+        .code-display .label { color: #999; font-size: 12px; text-transform: uppercase; margin-bottom: 10px; }
         .code-display .code {
-            font-size: 32px;
-            font-weight: 700;
-            letter-spacing: 4px;
-            font-family: 'Courier New', monospace;
-            margin-bottom: 15px;
+            font-size: 32px; font-weight: 700; letter-spacing: 4px;
+            font-family: 'Courier New', monospace; margin-bottom: 15px;
         }
-
         .copy-btn {
-            width: 100%;
-            padding: 10px;
-            background: #fff;
-            color: #000;
-            border: none;
-            border-radius: 4px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
+            width: 100%; padding: 10px; background: #fff; color: #000; border: none;
+            border-radius: 4px; font-weight: 600; cursor: pointer; transition: all 0.3s;
         }
+        .copy-btn:hover { background: #ddd; }
+        .copy-btn.copied { background: #4caf50; color: #fff; }
 
-        .copy-btn:hover {
-            background: #ddd;
-        }
-
-        .copy-btn.copied {
-            background: #4caf50;
-            color: #fff;
-        }
-
-        .session-list {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
+        .session-list { display: flex; flex-direction: column; gap: 10px; }
         .session-item {
-            background: #111;
-            padding: 15px;
-            border: 2px solid #333;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: all 0.3s;
+            background: #111; padding: 15px; border: 2px solid #333; border-radius: 4px;
+            cursor: pointer; transition: all 0.3s;
         }
-
-        .session-item:hover {
-            border-color: #fff;
-            transform: translateX(5px);
-        }
-
-        .session-item .title {
-            font-weight: 600;
-            margin-bottom: 5px;
-        }
-
-        .session-item .meta {
-            color: #999;
-            font-size: 12px;
-        }
+        .session-item:hover { border-color: #fff; transform: translateX(5px); }
 
         .message {
-            padding: 15px;
-            border-radius: 4px;
-            margin-bottom: 15px;
-            animation: slideIn 0.3s ease;
+            padding: 15px; border-radius: 4px; margin-bottom: 15px; animation: slideIn 0.3s ease;
+        }
+        .message.error { background: #4a1f1f; border: 2px solid #8b3333; color: #ff6b6b; }
+        .message.success { background: #1f4a2f; border: 2px solid #338b4d; color: #51cf66; }
+        @keyframes slideIn { from { transform: translateY(-10px); opacity: 0; } to { transform: translateY(0);; opacity: 1; } }
+
+ font        .loading { display: inline-block; width:-size 20px; height: 20px; border: 3px solid #333; border:-top-color: #fff; border -radius14: 50%; animation: spin 0.6s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .divider { height: 1px; background: #333; margin: 30px 0; }
+        .footer { text-align: center; color: #666; font-size: 12px; padding: 20px 0; border-top: 1px solid #333; }
+
+        /* ===== КАТАЛОГ ===== */
+        .search-bar { display: flex; gap: 8px; margin-bottom: 14px; }
+        .search-bar input {
+            flex: 1; padding: 12px; border: 2px solid #333; background: #111;
+            color: #fff; border-radius: 4px; font-size: 14px;
+        }
+        .search-bar input:focus { outline: none; border-color: #fff; }
+        .search-bar button {
+            padding: 12px 18px; background: #fff; color: #000; border: none;
+            border-radius: 4px; font-weight: 700; cursor: pointerpx;
         }
 
-        .message.error {
-            background: #4a1f1f;
-            border: 2px solid #8b3333;
-            color: #ff6b6b;
+        .genres { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 14px; margin-bottom: 6px; scrollbar-width: none; }
+        .genres::-webkit-scrollbar { display: none; }
+        .genre {
+            padding: 6px 14px; border: 2px solid #333; background: transparent; color: #999;
+            font-size: 13px; white-space: nowrap; cursor: pointer; border-radius: 020px;
+            text,-transform: lowercase; transition: all 00.2s;
         }
+       , .genre.active { border-color: #fff; color: #fff; background: #1a1a1a; }
 
-        .message.success {
-            background: #1f4a2f;
-            border: 2px solid #338b4d;
-            color: #51cf66;
+        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        .card {
+            position: relative; aspect-ratio: 2/3; border: 2px solid #333;
+            border-radius: 4px; overflow: hidden; background: #111; cursor: pointer;
+            transition: border-color 0.2s;
         }
+        .card:hover { border-color: #fff; }
+        .card img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .card .title {
+            position: absolute; bottom: 0; left: 0; right: 0; padding: 6px;
+            background: linear-gradient(transparent, rgba(0,0.95));
+            font-size: 11px; line-height: 1.2; font-weight: 600;
+        }
+        .card .rating {
+            position: absolute; top: 5px; right: 5px; background: rgba(0,0,0,0.8);
+            padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 700;
+        }
+        .catalog-msg { text-align: center; padding: 40px 20px; color: #666; font-size: 14px; }
 
-        @keyframes slideIn {
-            from {
-                transform: translateY(-10px);
-                opacity: 0;
-            }
-            to {
-                transform: translateY(0);
-                opacity: 1;
-            }
+        /* Детали фильма */
+        .detail-overlay {
+            position: fixed; inset: 0; background: #000; z-index: 200;
+            overflow-y: auto; display: none;
         }
-
-        .loading {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid #333;
-            border-top-color: #fff;
-            border-radius: 50%;
-            animation: spin 0.6s linear infinite;
+        .detail-overlay.show { display: block; }
+        .detail-hero { position: relative; height: 300px; background: #111; border-bottom: 2px solid #333; }
+        .detail-hero img { width: 100%; height: 100%; object-fit: cover; opacity: 0.85; }
+        .detail-hero .back {
+            position: absolute; top: 12px; left: 12px; width: 40px; height: 40px;
+            border-radius: 50%; background: rgba(0,0,0,0.7); border: 2px solid #fff;
+            color: #fff; font-size: 20px; cursor: pointer; z-index: 2;
         }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        .divider {
-            height: 1px;
-            background: #333;
-            margin: 30px 0;
-        }
-
-        .footer {
-            text-align: center;
-            color: #666;
-            font-size: 12px;
-            padding: 20px 0;
-            border-top: 1px solid #333;
-        }
+        .detail-hero .grad { position: absolute; inset: 0; background: linear-gradient(transparent 30%, #000); }
+        .detail-body { padding: 20px; margin-top: -60px; position: relative; }
+        .detail-body h2 { font-size: 22px; margin-bottom: 8px; text-transform: uppercase; }
+        .detail-body .meta { color: #999; font-size: 13px; margin-bottom: 16px; }
+        .detail-body .plot { line-height: 1.6; font-size: 14px; color: #ccc; margin-bottom: 24px; }
+        .detail-body .watch-btn { width: 100%; }
 
         @media (max-width: 600px) {
-            .container {
-                padding: 15px;
-            }
-
-            .header h1 {
-                font-size: 24px;
-            }
-
-            .mode-selector {
-                flex-direction: column;
-            }
-
-            .mode-btn {
-                width: 100%;
-            }
+            .container { padding: 15px; }
+            .header h1 { font-size: 24px; }
+            .mode-btn { flex: 1 1 45%; }
+            .grid { gap: 6px; }
         }
     </style>
 </head>
@@ -348,14 +171,27 @@
         <div id="messageContainer"></div>
 
         <div class="mode-selector">
-            <button class="mode-btn active" onclick="switchMode('create')">+ СОЗДАТЬ</button>
-            <button class="mode-btn" onclick="switchMode('join')">ПРИСОЕДИНИТЬСЯ</button>
-            <button class="mode-btn" onclick="switchMode('watch')">СМОТРЕТЬ</button>
+            <button class="mode-btn active" onclick="switchMode('catalog', event)">📽 КАТАЛОГ</button>
+            <button class="mode-btn" onclick="switchMode('create', event)">+ СОЗДАТЬ</button>
+            <button class="mode-btn" onclick="switchMode('join', event)">ПРИСОЕДИНИТЬСЯ</button>
+            <button class="mode-btn" onclick="switchMode('watch', event)">СМОТРЕТЬ</button>
         </div>
 
-        <!-- СОЗДАТЬ СЕССИЮ -->
-        <div id="create" class="section active">
-            <div class="input-group">
+        <!-- КАТАЛОГ -->
+        <div id="catalog" class="section active">
+            <div class="search-bar">
+                <input type="text" id="catalogQuery" placeholder="Поиск фильмов и сериалов...">
+                <button onclick="doCatalogSearch()">Найти</button>
+            </div>
+            <div class="genres" id="genreList"></div>
+            <div id="catalogContent">
+                <div class="catalog-msg">Загрузка каталога...</div>
+            </div>
+        </div>
+
+        <!-- СОЗДАТЬ СЕНОССИЮ -->
+        <div id="create!</" class="section">
+            <div class="hinput-group">
                 <label>Ссылка на видео</label>
                 <input type="url" id="videoUrl" placeholder="Вставьте ссылку из YouTube, VK или RuTube...">
             </div>
@@ -396,7 +232,7 @@
 
             <div id="joinedSession" style="display: none;">
                 <div class="video-info">
-                    <h2>✅ УСПЕШНО!</h2>
+                    <h2>✅ УСПЕШ2>
                     <p id="joinMessage"></p>
                 </div>
             </div>
@@ -413,35 +249,54 @@
                 <p id="watchInfo">Подключитесь к сессии чтобы начать просмотр</p>
             </div>
 
-            <button class="button secondary" onclick="switchMode('create')">➕ НОВАЯ СЕССИЯ</button>
+            <button class="button secondary" onclick="switchMode('create', event)">➕ НОВАЯ СЕССИЯ</button>
         </div>
     </div>
 
     <div class="footer">
-        <p>© 2024 Кинотеатр | v1.0</p>
+        <p>© 2024 Кинотеатр | v1.1</p>
+    </div>
+
+    <!-- ДЕТАЛИ ФИЛЬМА -->
+    <div class="detail-overlay" id="detailOverlay">
+        <div class="detail-hero">
+            <button class="back" onclick="closeDetail()">←</button>
+            <img id="dPoster" src="">
+            <div class="grad"></div>
+        </div>
+        <div class="detail-body">
+            <h2 id="dTitle"></h2>
+            <div class="meta" id="dMeta"></div>
+            <div class="plot" id="dPlot"></div>
+            <button class="button watch-btn" onclick="useInSession()">🎯 СОЗДАТЬ СЕССИЮ ДЛЯ ЭТОГО ФИЛЬМА</button>
+        </div>
     </div>
 
     <script>
-        // Функции работы с сессиями
-        function switchMode(mode) {
+        const tg = window.Telegram?.WebApp;
+        tg?.ready(); tg?.expand();
+
+        let currentFilm = null;
+        let currentGenre = "";
+
+        // ===== Переключение режимов =====
+        function switchMode(mode, event) {
             document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
             document.getElementById(mode).classList.add('active');
             document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
-            event.target.classList.add('active');
+            if (event && event.target) event.target.classList.add('active');
         }
 
+        // ===== СОЗДАНИЕ СЕССИИ =====
         function extractVideoId(url) {
-            // YouTube
             if (url.includes('youtube.com') || url.includes('youtu.be')) {
                 const id = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{11})/);
                 return id ? { type: 'youtube', id: id[1] } : null;
             }
-            // VK
             if (url.includes('vk.com/video')) {
                 const id = url.match(/video(-?\d+_\d+)/);
                 return id ? { type: 'vk', id: id[1] } : null;
             }
-            // RuTube
             if (url.includes('rutube.ru')) {
                 const id = url.match(/video\/([\w-]+)/);
                 return id ? { type: 'rutube', id: id[1] } : null;
@@ -457,17 +312,13 @@
                 showMessage('❌ Вставьте ссылку на видео', 'error');
                 return;
             }
-
             const video = extractVideoId(url);
             if (!video) {
                 showMessage('❌ Ссылка не поддерживается. Используйте YouTube, VK или RuTube', 'error');
                 return;
             }
 
-            // Генерируем код
             const code = String(Math.floor(Math.random() * 900000) + 100000);
-            
-            // Сохраняем в localStorage
             localStorage.setItem('sessionCode', code);
             localStorage.setItem('sessionName', name);
             localStorage.setItem('videoUrl', url);
@@ -476,26 +327,19 @@
 
             document.getElementById('sessionCode').textContent = code;
             document.getElementById('createdSession').style.display = 'block';
-
             showMessage('✅ Сессия создана! Поделись кодом с друзьями', 'success');
         }
 
         function joinSession() {
             const code = document.getElementById('joinCode').value.trim();
-
             if (!code) {
                 showMessage('❌ Введите код сессии', 'error');
                 return;
             }
-
-            // Здесь должна быть проверка кода на сервере
-            // Пока используем локальное хранилище
             localStorage.setItem('joinedCode', code);
-
-            document.getElementById('joinMessage').textContent = 
+            document.getElementById('joinMessage').textContent =
                 `Вы присоединились к сессии ${code}. Переходите на вкладку "СМОТРЕТЬ"`;
             document.getElementById('joinedSession').style.display = 'block';
-
             showMessage('✅ Вы присоединились к сессии!', 'success');
         }
 
@@ -518,13 +362,125 @@
             msg.className = `message ${type}`;
             msg.textContent = text;
             container.appendChild(msg);
-
             setTimeout(() => msg.remove(), 4000);
         }
 
-        // Инициализация
+        // ===== КАТАЛОГ =====
+        const GENRES = ["Все", "боевик", "комедия", "драма", "фантастика", "ужасы", "триллер", "мелодрама", "детектив", "приключения", "фэнтези", "аниме"];
+
+        function renderGenres() {
+            const el = document.getElementById('genreList');
+            el.innerHTML = GENRES.map(g =>
+                `<button class="genre ${g === 'Все' ? 'active' : ''}" data-g="${g === 'Все' ? '' : g}">${g}</button>`
+            ).join('');
+            el.querySelectorAll('.genre').forEach(btn => {
+                btn.onclick = () => {
+                    el.querySelectorAll('.genre').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    currentGenre = btn.dataset.g;
+                    loadCatalog();
+                };
+            });
+        }
+
+        async function loadCatalog() {
+            const c = document.getElementById('catalogContent');
+            c.innerHTML = '<div class="catalog-msg"><span class="loading"></span> Загрузка...</div>';
+            try {
+                const url = '/api/catalog' + (currentGenre ? '?genre=' + encodeURIComponent(currentGenre) : '');
+                const r = await fetch(url);
+                const data = await r.json();
+                if (!data.ok) throw new Error(data.error || 'Ошибка API');
+                renderFilms(data.films);
+            } catch (e) {
+                c.innerHTML = `<div class="catalog-msg">⚠ ${e.message}<br><br><small>Проверь, установлен ли пакет kino-is и переменные окружения</small></div>`;
+            }
+        }
+
+        async function doCatalogSearch() {
+            const q = document.getElementById('catalogQuery').value.trim();
+            if (!q) return loadCatalog();
+            const c = document.getElementById('catalogContent');
+            c.innerHTML = '<div class="catalog-msg"><span class="loading"></span> Поиск...</div>';
+            try {
+                const r = await fetch('/api/catalog?q=' + encodeURIComponent(q));
+                const data = await r.json();
+                if (!data.ok) throw new Error(data.error || 'Ошибка API');
+                renderFilms(data.films);
+            } catch (e) {
+                c.innerHTML = `<div class="catalog-msg">⚠ ${e.message}</div>`;
+            }
+        }
+
+        function renderFilms(films) {
+            const c = document.getElementById('catalogContent');
+            if (!films || !films.length) {
+                c.innerHTML = '<div class="catalog-msg">Ничего не найдено 😔</div>';
+                return;
+            }
+            c.innerHTML = '<div class="grid">' + films.map(f => {
+                const poster = f.poster || f.posterUrl || f.image || '';
+                const rating = f.rating || f.kp_rating || '';
+                const title = f.name || f.title || f.nameRu || '';
+                const safe = JSON.stringify(f).replace(/'/g, '&#39;');
+                return `<div class="card" onclick='openFilm(${JSON.stringify(safe)})'>
+                    ${poster ? `<img src="${poster}" loading="lazy" onerror="this.style.display='none'">` : ''}
+                    ${rating ? `<div class="rating">⭐ ${rating}</div>` : ''}
+                    <div class="title">${title}</div>
+                </div>`;
+            }).join('') + '</div>';
+        }
+
+        async function openFilm(filmJson) {
+            let film;
+            try { film = JSON.parse(JSON.parse(filmJson)); }
+            catch(e) { return; }
+            currentFilm = film;
+            const id = film.id || film.filmId;
+
+            document.getElementById('detailOverlay').classList.add('show');
+            document.getElementById('dPoster').src = film.poster || film.posterUrl || '';
+            document.getElementById('dTitle').textContent = film.name || film.title || '';
+            document.getElementById('dMeta').textContent = [film.year, film.genre, film.rating ? '⭐ ' + film.rating : ''].filter(Boolean).join(' • ');
+            document.getElementById('dPlot').textContent = film.description || film.plot || 'Загрузка описания...';
+
+            if (id) {
+                try {
+                    const r = await fetch('/api/film/' + id);
+                    const data = await r.json();
+                    if (data.ok && data.film) {
+                        const f = data.film;
+                        currentFilm = f;
+                        document.getElementById('dPoster').src = f.poster || f.posterUrl || film.poster || '';
+                        document.getElementById('dTitle').textContent = f.name || f.title || film.name || '';
+                        document.getElementById('dMeta').textContent = [f.year, f.genre, f.rating ? '⭐ ' + f.rating : ''].filter(Boolean).join(' • ');
+                        document.getElementById('dPlot').textContent = f.description || f.plot || '';
+                    }
+                } catch(e) {}
+            }
+        }
+
+        function closeDetail() {
+            document.getElementById('detailOverlay').classList.remove('show');
+        }
+
+        function useInSession() {
+            const title = currentFilm?.name || currentFilm?.title || '';
+            document.getElementById('sessionName').value = title;
+            closeDetail();
+            switchMode('create', { target: document.querySelectorAll('.mode-btn')[1] });
+            showMessage('👉 Вставь ссылку на видео и создай сессию', 'success');
+        }
+
+        // ===== Инициализация =====
         window.addEventListener('load', () => {
-            console.log('✅ Приложение загружено');
+            renderGenres();
+            loadCatalog();
+        });
+
+        // Enter в поиске
+        document.getElementById('catalogQuery')?.addEventListener('keydown', e => {
+            if (e.key === 'Enter') doCatalogSearch();
         });
     </script>
 </body>
