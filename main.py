@@ -44,8 +44,8 @@ def room_public(r):
     return {"code": r["code"], "name": r["name"], "video_url": r["video_url"],
             "film": r["film"], "participants": r["participants"]}
 
-# ---------- API IMDbOT ----------
-IMDB_API = "https://imdb.iamidiotareyoutoo.com"
+# ---------- iTunes Search API ----------
+ITUNES_API = "https://itunes.apple.com/search"
 
 async def api_catalog(request):
     q = request.query.get("q", "").strip()
@@ -53,23 +53,17 @@ async def api_catalog(request):
         return web.json_response({"ok": True, "films": []})
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.get(f"{IMDB_API}/search", params={"q": q}) as resp:
+            async with session.get(
+                ITUNES_API,
+                params={
+                    "term": q,
+                    "media": "movie",
+                    "limit": 25
+                }
+            ) as resp:
                 data = await resp.json()
-        # IMDbOT возвращает список результатов в разных форматах.
-        # Пробуем достать массив фильмов из типичных полей.
-        films = data if isinstance(data, list) else (data.get("results") or data.get("titles") or data.get("data") or [])
+        films = data.get("results", [])
         return web.json_response({"ok": True, "films": films})
-    except Exception as e:
-        return web.json_response({"ok": False, "error": str(e)}, status=500)
-
-async def api_film(request):
-    tt = request.match_info.get("film_id")
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(f"{IMDB_API}/search", params={"tt": tt}) as resp:
-                data = await resp.json()
-        film = data if isinstance(data, dict) else (data[0] if data else {})
-        return web.json_response({"ok": True, "film": film})
     except Exception as e:
         return web.json_response({"ok": False, "error": str(e)}, status=500)
 
@@ -165,7 +159,6 @@ async def start_web():
     app.router.add_get("/app.html", handle_index)
     app.router.add_get("/health", handle_health)
     app.router.add_get("/api/catalog", api_catalog)
-    app.router.add_get("/api/film/{film_id}", api_film)
     app.router.add_post("/api/session/create", api_create)
     app.router.add_post("/api/session/join", api_join)
     app.router.add_get("/ws/{code}", ws_handler)
