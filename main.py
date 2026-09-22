@@ -3,7 +3,6 @@ import json
 import sqlite3
 import os
 import random
-import aiohttp
 from datetime import datetime
 from aiohttp import web
 from aiogram import Bot, Dispatcher, types
@@ -21,7 +20,6 @@ PORT = int(os.getenv("PORT", "3000"))
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
-# ---------- База ----------
 def init_db():
     conn = sqlite3.connect("movies.db"); c = conn.cursor()
     c.execute('CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY, username TEXT, created_at TIMESTAMP)')
@@ -44,30 +42,6 @@ def room_public(r):
     return {"code": r["code"], "name": r["name"], "video_url": r["video_url"],
             "film": r["film"], "participants": r["participants"]}
 
-# ---------- iTunes Search API ----------
-ITUNES_API = "https://itunes.apple.com/search"
-
-async def api_catalog(request):
-    q = request.query.get("q", "").strip()
-    if not q:
-        return web.json_response({"ok": True, "films": []})
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(
-                ITUNES_API,
-                params={
-                    "term": q,
-                    "media": "movie",
-                    "limit": 25
-                }
-            ) as resp:
-                data = await resp.json()
-        films = data.get("results", [])
-        return web.json_response({"ok": True, "films": films})
-    except Exception as e:
-        return web.json_response({"ok": False, "error": str(e)}, status=500)
-
-# ---------- API комнат ----------
 async def api_create(request):
     d = await request.json()
     code = gen_code()
@@ -158,7 +132,6 @@ async def start_web():
     app.router.add_get("/", handle_index)
     app.router.add_get("/app.html", handle_index)
     app.router.add_get("/health", handle_health)
-    app.router.add_get("/api/catalog", api_catalog)
     app.router.add_post("/api/session/create", api_create)
     app.router.add_post("/api/session/join", api_join)
     app.router.add_get("/ws/{code}", ws_handler)
@@ -174,7 +147,7 @@ async def start(message: types.Message):
         InlineKeyboardButton(text="🎬 Открыть кинотеатр",
             web_app=WebAppInfo(url=f"{WEB_APP_URL}/app.html"))
     ]])
-    await message.answer("🎭 Кинотеатр\n\nБиблиотека фильмов и совместный просмотр.", reply_markup=kb)
+    await message.answer("🎭 Кинотеатр\n\nСпорт, фильмы и совместный просмотр.", reply_markup=kb)
 
 async def main():
     init_db()
