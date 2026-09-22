@@ -3,252 +3,144 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Кинотеатр</title>
+<title>Clash Mini</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   body{background:#000;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display',sans-serif;min-height:100vh;overflow-x:hidden}
-
-  .top{position:sticky;top:0;z-index:10;background:#000;padding:14px 16px;border-bottom:1px solid #1a1a1a;display:flex;align-items:center;justify-content:space-between}
+  .top{position:sticky;top:0;z-index:10;background:#000;padding:14px 16px;border-bottom:1px solid #1a1a1a;text-align:center}
   .top h1{font-size:13px;letter-spacing:4px;font-weight:700;text-transform:uppercase}
-  .top .back{background:none;border:none;color:#fff;font-size:20px;cursor:pointer;padding:4px 8px}
-  .top .code-tag{font-family:'SF Mono',monospace;font-size:11px;letter-spacing:2px;border:1px solid #fff;padding:3px 8px}
-
   .screen{display:none;padding:16px 16px 90px;animation:fade .2s}
   .screen.active{display:block}
   @keyframes fade{from{opacity:0}to{opacity:1}}
-
-  .search{display:flex;gap:8px;margin-bottom:14px}
-  .search input{flex:1;background:#0d0d0d;border:1px solid #222;color:#fff;padding:13px 14px;font-size:15px;font-family:inherit;outline:none}
-  .search input:focus{border-color:#fff}
-  .search button{background:#fff;color:#000;border:none;padding:0 16px;font-weight:700;font-size:16px;cursor:pointer;font-family:inherit}
-
-  .msg{text-align:center;padding:20px;color:#666;font-size:12px;letter-spacing:2px}
-
   .btn{width:100%;padding:16px;background:#fff;color:#000;border:1px solid #fff;font-family:inherit;font-size:13px;font-weight:700;letter-spacing:2px;text-transform:uppercase;cursor:pointer;margin-bottom:10px}
   .btn:active{transform:scale(.98)}
   .btn.ghost{background:transparent;color:#fff}
-  .btn.ghost:active{background:#fff;color:#000}
-  .btn.danger{background:transparent;color:#ff4444;border-color:#ff4444}
-
   .field{margin-bottom:14px}
   .field label{display:block;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#777;margin-bottom:7px}
   .field input{width:100%;padding:15px;background:#0d0d0d;border:1px solid #222;color:#fff;font-family:inherit;font-size:15px;outline:none}
   .field input:focus{border-color:#fff}
   .field input.code{font-family:'SF Mono',monospace;font-size:26px;text-align:center;letter-spacing:8px;font-weight:700;padding-left:26px}
-
   .code-box{border:1px solid #fff;padding:24px 18px;text-align:center;margin:16px 0}
   .code-box .lbl{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:#777;margin-bottom:10px}
   .code-box .code{font-family:'SF Mono',monospace;font-size:38px;font-weight:700;letter-spacing:6px;margin-bottom:16px}
-
-  .room-card{border:1px solid #1a1a1a;padding:16px;margin-bottom:10px;background:#0d0d0d}
-  .room-card .t{font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:5px}
-  .room-card .s{color:#888;font-size:12px;line-height:1.5}
-
-  .player-wrap{width:100%;aspect-ratio:16/9;background:#0d0d0d;border:1px solid #222;margin-bottom:14px;position:relative;overflow:hidden}
-  .player-wrap iframe,.player-wrap video{position:absolute;inset:0;width:100%;height:100%;border:0}
-  .player-msg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#666;font-size:12px;letter-spacing:2px;text-align:center;padding:20px}
-
-  .status-bar{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border:1px solid #1a1a1a;margin-bottom:12px;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#888}
-  .status-bar .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#ff4444;margin-right:6px}
-  .status-bar .dot.on{background:#44ff88}
-
-  .chat{height:180px;overflow-y:auto;border:1px solid #1a1a1a;padding:10px;margin-bottom:8px;font-size:13px;background:#0d0d0d}
-  .chat .m{margin-bottom:8px;line-height:1.4}
-  .chat .m .u{color:#777;font-size:11px;font-family:'SF Mono',monospace}
-  .chat .m .x{color:#fff}
-  .chat-input{display:flex;gap:6px;margin-bottom:14px}
-  .chat-input input{flex:1;background:#0d0d0d;border:1px solid #222;color:#fff;padding:11px 12px;font-size:14px;font-family:inherit;outline:none}
-  .chat-input button{background:#fff;color:#000;border:none;padding:0 14px;font-weight:700;cursor:pointer;font-family:inherit}
-
-  .nav{position:fixed;bottom:0;left:0;right:0;background:#000;border-top:1px solid #1a1a1a;display:flex;padding-bottom:env(safe-area-inset-bottom);z-index:20}
-  .nav button{flex:1;padding:12px 6px;background:transparent;border:none;color:#666;font-family:inherit;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px}
-  .nav button.active{color:#fff}
-  .nav button .ico{font-size:17px}
-
-  .hidden{display:none!important}
+  .arena{width:100%;background:#0d0d0d;border:1px solid #222;margin-bottom:14px;position:relative;height:120px}
+  canvas{width:100%;height:100%;display:block}
+  .hud{display:flex;justify-content:space-between;margin-bottom:14px;font-size:12px;letter-spacing:1px;text-transform:uppercase;color:#888}
+  .hud .hp{color:#fff;font-weight:700}
+  .hand{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:14px}
+  .card{border:1px solid #222;background:#0d0d0d;padding:10px 6px;text-align:center;cursor:pointer}
+  .card:active{border-color:#fff}
+  .card.disabled{opacity:.3;pointer-events:none}
+  .card .n{font-size:11px;font-weight:700;margin-bottom:4px}
+  .card .c{font-size:14px;font-weight:700;color:#a855f7}
+  .card .s{font-size:10px;color:#666;margin-top:2px}
+  .elixir{height:10px;background:#1a1a1a;border:1px solid #222;margin-bottom:14px;position:relative;overflow:hidden}
+  .elixir-fill{height:100%;background:#a855f7;transition:width .3s;width:50%}
+  .status{text-align:center;font-size:12px;color:#888;letter-spacing:1px;margin-bottom:14px}
+  .status .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#ff4444;margin-right:6px}
+  .status .dot.on{background:#44ff88}
 </style>
 </head>
 <body>
 
-<div class="top">
-  <button class="back hidden" id="backBtn" onclick="goBack()">←</button>
-  <h1 id="title">СПОРТ</h1>
-  <span id="codeTag" class="code-tag hidden"></span>
+<div class="top"><h1 id="title">CLASH MINI</h1></div>
+
+<div id="s-menu" class="screen active">
+  <button class="btn" onclick="go('create')">СОЗДАТЬ ИГРУ</button>
+  <button class="btn ghost" onclick="go('join')">ПРИСОЕДИНИТЬСЯ</button>
 </div>
 
-<!-- СПОРТ -->
-<div id="s-sport" class="screen active">
-  <div class="msg">ПРЯМЫЕ ТРАНСЛЯЦИИ И СЧЁТ</div>
-  <button class="btn" onclick="openStream('https://livetv.sx/allupcomingsports/1/')">⚽ LIVETV</button>
-  <button class="btn ghost" onclick="openStream('https://www.aiscore.com/ru/')">📊 AISCORE (СЧЁТ)</button>
-  <button class="btn ghost" onclick="openStream('https://futemax.stream/')">🏆 FUTEMAX</button>
-  <button class="btn ghost" onclick="openStream('https://hesgoal-tv.space/')">🎥 HESGOAL</button>
-  <div class="msg" style="padding-top:30px;font-size:11px;line-height:1.6">САЙТЫ ОТКРЫВАЮТСЯ ВО ВНЕШНЕМ БРАУЗЕРЕ.<br>НА iPHONE — В SAFARI.</div>
-</div>
-
-<!-- СОЗДАТЬ -->
 <div id="s-create" class="screen">
   <div id="createForm">
-    <div class="field">
-      <label>Название комнаты</label>
-      <input id="sessName" type="text" placeholder="Вечерний просмотр">
-    </div>
-    <div class="field">
-      <label>Ссылка на видео (YouTube / VK / RuTube)</label>
-      <input id="sessUrl" type="url" placeholder="https://youtube.com/watch?v=...">
-    </div>
-    <button class="btn" onclick="createRoom()">СОЗДАТЬ КОМНАТУ</button>
+    <div class="field"><label>Твоё имя</label><input id="createName" type="text" placeholder="Игрок"></div>
+    <button class="btn" onclick="createGame()">СОЗДАТЬ</button>
   </div>
   <div id="createResult" class="hidden">
     <div class="code-box">
-      <div class="lbl">КОД КОМНАТЫ</div>
+      <div class="lbl">КОД ИГРЫ</div>
       <div class="code" id="newCode">000000</div>
       <button class="btn ghost" onclick="copyCode()" id="copyBtn">СКОПИРОВАТЬ</button>
     </div>
-    <button class="btn" onclick="enterRoom()">ВОЙТИ В КОМНАТУ</button>
-    <button class="btn ghost" onclick="resetCreate()">НОВАЯ КОМНАТА</button>
+    <button class="btn" onclick="enterGame()">ВОЙТИ</button>
   </div>
 </div>
 
-<!-- ВОЙТИ -->
 <div id="s-join" class="screen">
-  <div class="field">
-    <label>Код комнаты</label>
-    <input id="joinCode" type="tel" inputmode="numeric" maxlength="6" class="code" placeholder="000000">
-  </div>
-  <button class="btn" onclick="joinRoom()">ВОЙТИ</button>
+  <div class="field"><label>Твоё имя</label><input id="joinName" type="text" placeholder="Игрок"></div>
+  <div class="field"><label>Код игры</label><input id="joinCode" type="tel" inputmode="numeric" maxlength="6" class="code" placeholder="000000"></div>
+  <button class="btn" onclick="joinGame()">ВОЙТИ</button>
 </div>
 
-<!-- КОМНАТА -->
-<div id="s-room" class="screen">
-  <div class="status-bar">
-    <span><span class="dot" id="wsDot"></span><span id="wsStatus">ПОДКЛЮЧЕНИЕ...</span></span>
-    <span id="membersCount">1 участник</span>
+<div id="s-game" class="screen">
+  <div class="status"><span class="dot" id="wsDot"></span><span id="wsStatus">ПОДКЛЮЧЕНИЕ...</span></div>
+  <div class="hud">
+    <span>ТЫ: <span class="hp" id="myHp">100</span> HP</span>
+    <span>ВРАГ: <span class="hp" id="enemyHp">100</span> HP</span>
   </div>
-  <div class="player-wrap" id="playerWrap">
-    <div class="player-msg" id="playerMsg">ЗАГРУЗКА ПЛЕЕРА...</div>
-  </div>
-  <div class="room-card">
-    <div class="t" id="roomTitle">—</div>
-    <div class="s" id="roomFilm">—</div>
-  </div>
-  <div class="chat" id="chatBox"></div>
-  <div class="chat-input">
-    <input id="chatInput" type="text" placeholder="Написать..." maxlength="200">
-    <button onclick="sendChat()">→</button>
-  </div>
-  <button class="btn danger" onclick="leaveRoom()">ВЫЙТИ ИЗ КОМНАТЫ</button>
+  <div class="arena"><canvas id="arena"></canvas></div>
+  <div class="elixir"><div class="elixir-fill" id="elixirFill"></div></div>
+  <div class="hand" id="hand"></div>
+  <button class="btn ghost" onclick="leaveGame()">ВЫЙТИ</button>
 </div>
 
-<div class="nav">
-  <button data-s="sport" class="active" onclick="go('sport')"><span class="ico">⚽</span><span>СПОРТ</span></button>
-  <button data-s="create" onclick="go('create')"><span class="ico">＋</span><span>СОЗДАТЬ</span></button>
-  <button data-s="join" onclick="go('join')"><span class="ico">→</span><span>ВОЙТИ</span></button>
-</div>
-
-<script src="https://www.youtube.com/iframe_api"></script>
 <script>
 const tg = window.Telegram?.WebApp;
 tg?.ready(); tg?.expand();
 const USER_ID = tg?.initDataUnsafe?.user?.id || Date.now();
-const USERNAME = tg?.initDataUnsafe?.user?.username || ('guest' + String(USER_ID).slice(-4));
 
-const TITLES = { sport:'СПОРТ', create:'СОЗДАТЬ', join:'ВОЙТИ', room:'КОМНАТА' };
-let currentRoom = null;
-let history = ['sport'];
+let ws = null, code = null, mySide = null;
+let state = {players:{white:null,black:null}, units:[]};
+const cards = [
+  {id:1,name:'Гоблин',cost:2,atk:8,hp:15},
+  {id:2,name:'Лучник',cost:3,atk:12,hp:20},
+  {id:3,name:'Рыцарь',cost:4,atk:18,hp:35},
+  {id:4,name:'Гигант',cost:5,atk:25,hp:60},
+];
 
 function go(s) {
   document.querySelectorAll('.screen').forEach(x => x.classList.remove('active'));
   document.getElementById('s-' + s).classList.add('active');
-  document.querySelectorAll('.nav button').forEach(b => b.classList.toggle('active', b.dataset.s === s));
-  document.getElementById('title').textContent = TITLES[s] || '';
-  const back = document.getElementById('backBtn');
-  back.classList.toggle('hidden', s === 'sport' || s === 'create' || s === 'join');
-  if (history[history.length-1] !== s) history.push(s);
-  window.scrollTo(0,0);
-}
-function goBack() {
-  if (history.length > 1) { history.pop(); const prev = history[history.length-1]; history.pop(); go(prev); }
-  else go('sport');
+  if (s === 'game') resizeArena();
 }
 
-function openStream(url) {
-  if (tg && tg.openLink) tg.openLink(url);
-  else window.open(url, '_blank');
+async function createGame() {
+  const name = document.getElementById('createName').value.trim() || 'Игрок';
+  const r = await fetch('/api/game/create', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:USER_ID,username:name})});
+  const d = await r.json();
+  code = d.code; mySide = 'white';
+  document.getElementById('newCode').textContent = d.code;
+  document.getElementById('createForm').classList.add('hidden');
+  document.getElementById('createResult').classList.remove('hidden');
 }
-
-async function createRoom() {
-  const name = document.getElementById('sessName').value.trim() || 'Комната';
-  const url = document.getElementById('sessUrl').value.trim();
-  try {
-    const r = await fetch('/api/session/create', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ name, video_url: url, user_id: USER_ID, username: USERNAME })
-    });
-    const d = await r.json();
-    if (!d.ok) throw new Error(d.error);
-    currentRoom = d.session;
-    document.getElementById('newCode').textContent = d.code;
-    document.getElementById('createForm').classList.add('hidden');
-    document.getElementById('createResult').classList.remove('hidden');
-    document.getElementById('codeTag').textContent = 'КОД ' + d.code;
-    document.getElementById('codeTag').classList.remove('hidden');
-  } catch(e) { tg?.showAlert?.('Ошибка: ' + e.message); }
-}
-
 function copyCode() {
   const c = document.getElementById('newCode').textContent;
-  navigator.clipboard.writeText(c).then(() => {
-    const b = document.getElementById('copyBtn');
-    b.textContent = 'СКОПИРОВАНО ✓';
-    setTimeout(()=>b.textContent='СКОПИРОВАТЬ',1500);
-  });
+  navigator.clipboard.writeText(c).then(()=>{const b=document.getElementById('copyBtn');b.textContent='СКОПИРОВАНО ✓';setTimeout(()=>b.textContent='СКОПИРОВАТЬ',1500)});
 }
-function resetCreate() {
-  document.getElementById('sessName').value = '';
-  document.getElementById('sessUrl').value = '';
-  document.getElementById('createForm').classList.remove('hidden');
-  document.getElementById('createResult').classList.add('hidden');
-  document.getElementById('codeTag').classList.add('hidden');
-}
-function enterRoom() { if (currentRoom) openRoom(currentRoom); }
+function enterGame() { if (code) openGame(); }
 
-async function joinRoom() {
-  const code = document.getElementById('joinCode').value.trim();
-  if (code.length !== 6) { tg?.showAlert?.('Код из 6 цифр'); return; }
-  try {
-    const r = await fetch('/api/session/join', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ code, user_id: USER_ID, username: USERNAME })
-    });
-    const d = await r.json();
-    if (!d.ok) throw new Error(d.error);
-    document.getElementById('codeTag').textContent = 'КОД ' + d.session.code;
-    document.getElementById('codeTag').classList.remove('hidden');
-    openRoom(d.session);
-  } catch(e) { tg?.showAlert?.(e.message); }
+async function joinGame() {
+  const name = document.getElementById('joinName').value.trim() || 'Игрок';
+  const c = document.getElementById('joinCode').value.trim();
+  if (c.length !== 6) { tg?.showAlert?.('Код из 6 цифр'); return; }
+  const r = await fetch('/api/game/join', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:c,user_id:USER_ID,username:name})});
+  const d = await r.json();
+  if (!d.ok) { tg?.showAlert?.(d.error); return; }
+  code = c; mySide = 'black';
+  openGame();
 }
 
-// ===== ROOM + WS =====
-let ws = null, ytPlayer = null, suppress = false;
-
-function openRoom(session) {
-  currentRoom = session;
-  document.getElementById('roomTitle').textContent = session.name || 'Комната';
-  document.getElementById('roomFilm').textContent = session.video_url ? 'Видео по ссылке' : 'Ссылка не указана';
-  document.getElementById('chatBox').innerHTML = '';
-  go('room');
-  connectWS(session.code);
-  loadVideo(session.video_url || '');
+function openGame() {
+  go('game');
+  connectWS();
+  renderHand();
 }
 
-function connectWS(code) {
+function connectWS() {
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-  ws = new WebSocket(`${proto}://${location.host}/ws/${code}`);
-  ws.onopen = () => { setDot(true); ws.send(JSON.stringify({type:'join', user_id:USER_ID, username:USERNAME})); };
+  ws = new WebSocket(`${proto}://${location.host}/ws/game/${code}`);
+  ws.onopen = () => setDot(true);
   ws.onclose = () => setDot(false);
-  ws.onerror = () => setDot(false);
   ws.onmessage = e => handleWS(JSON.parse(e.data));
 }
 
@@ -259,90 +151,91 @@ function setDot(on) {
 
 function handleWS(msg) {
   if (msg.type === 'state') {
-    if (msg.state?.video_url) loadVideo(msg.state.video_url);
-    if (msg.members) updateMembers(msg.members);
-  } else if (msg.type === 'members') updateMembers(msg.members);
-  else if (msg.type === 'set_video') loadVideo(msg.url);
-  else if (msg.type === 'play') { suppress=true; ytPlayer?.playVideo?.(); setTimeout(()=>suppress=false,300); }
-  else if (msg.type === 'pause') { suppress=true; ytPlayer?.pauseVideo?.(); setTimeout(()=>suppress=false,300); }
-  else if (msg.type === 'seek') { suppress=true; ytPlayer?.seekTo?.(msg.time,true); setTimeout(()=>suppress=false,300); }
-  else if (msg.type === 'chat') appendChat(msg.username, msg.text);
-}
-
-function updateMembers(arr) {
-  document.getElementById('membersCount').textContent = arr.length + ' ' + plural(arr.length, ['участник','участника','участников']);
-}
-function plural(n, f) { const a=Math.abs(n)%100,b=a%10; if(a>10&&a<20)return f[2]; if(b>1&&b<5)return f[1]; if(b===1)return f[0]; return f[2]; }
-
-function parseVideo(url) {
-  if (!url) return null;
-  let m;
-  if ((m = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([\w-]{11})/))) return { type:'youtube', id:m[1] };
-  if ((m = url.match(/vk\.com\/video(-?\d+_\d+)/))) return { type:'vk', id:m[1] };
-  if ((m = url.match(/rutube\.ru\/(?:video|play\/embed)\/([\w-]+)/))) return { type:'rutube', id:m[1] };
-  if (/\.(mp4|webm|m3u8)(\?|$)/i.test(url)) return { type:'direct', url };
-  return null;
-}
-
-function loadVideo(url) {
-  const v = parseVideo(url);
-  const wrap = document.getElementById('playerWrap');
-  ytPlayer = null;
-  if (!v) {
-    wrap.innerHTML = '<div class="player-msg">ВСТАВЬ ССЫЛКУ НА ВИДЕО (YOUTUBE / VK / RUTUBE)</div>';
-    return;
-  }
-  if (v.type === 'youtube') {
-    wrap.innerHTML = '<div id="yt"></div>';
-    const tryInit = () => {
-      if (!window.YT || !window.YT.Player) { setTimeout(tryInit, 200); return; }
-      ytPlayer = new YT.Player('yt', {
-        videoId: v.id,
-        playerVars: { playsinline:1, controls:1, rel:0, modestbranding:1 },
-        events: {
-          onStateChange: (e) => {
-            if (suppress || !ws || ws.readyState !== 1) return;
-            const t = ytPlayer.getCurrentTime?.() || 0;
-            if (e.data === YT.PlayerState.PLAYING) ws.send(JSON.stringify({type:'play', time:t}));
-            else if (e.data === YT.PlayerState.PAUSED) ws.send(JSON.stringify({type:'pause', time:t}));
-          }
-        }
-      });
-    };
-    tryInit();
-  } else if (v.type === 'vk') {
-    wrap.innerHTML = `<iframe src="https://vk.com/video_ext.php?oid=${v.id.split('_')[0]}&id=${v.id.split('_')[1]}&hd=2&autoplay=1" allow="autoplay; encrypted-media; fullscreen; picture-in-picture"></iframe>`;
-  } else if (v.type === 'rutube') {
-    wrap.innerHTML = `<iframe src="https://rutube.ru/play/embed/${v.id}" allow="clipboard-write; autoplay" allowfullscreen></iframe>`;
-  } else if (v.type === 'direct') {
-    wrap.innerHTML = `<video id="v" src="${v.url}" controls playsinline></video>`;
+    state = msg.state;
+    render();
+  } else if (msg.type === 'gameover') {
+    tg?.showAlert?.(msg.winner === mySide ? '🏆 ПОБЕДА!' : '💀 ПОРАЖЕНИЕ');
+    leaveGame();
   }
 }
 
-function sendChat() {
-  const i = document.getElementById('chatInput');
-  const t = i.value.trim(); if (!t) return;
-  ws?.send?.(JSON.stringify({type:'chat', text:t, username:USERNAME}));
-  i.value = '';
-}
-function appendChat(user, text) {
-  const box = document.getElementById('chatBox');
-  const d = document.createElement('div'); d.className = 'm';
-  d.innerHTML = `<div class="u">@${escapeHtml(user)}</div><div class="x">${escapeHtml(text)}</div>`;
-  box.appendChild(d); box.scrollTop = box.scrollHeight;
-}
-function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-
-function leaveRoom() {
-  ws?.close?.(); ws = null; ytPlayer = null; currentRoom = null;
-  document.getElementById('codeTag').classList.add('hidden');
-  document.getElementById('playerWrap').innerHTML = '<div class="player-msg">ЗАГРУЗКА ПЛЕЕРА...</div>';
-  go('sport');
+function renderHand() {
+  const h = document.getElementById('hand');
+  h.innerHTML = cards.map(c => `
+    <div class="card" data-id="${c.id}" onclick="playCard(${c.id})">
+      <div class="n">${c.name}</div>
+      <div class="c">${c.cost}⚡</div>
+      <div class="s">${c.atk}/${c.hp}</div>
+    </div>`).join('');
 }
 
-// init
+function playCard(id) {
+  if (!ws || ws.readyState !== 1) return;
+  ws.send(JSON.stringify({type:'play_card', player:mySide, card_id:id}));
+}
+
+function resizeArena() {
+  const c = document.getElementById('arena');
+  const w = c.parentElement.clientWidth;
+  c.width = w; c.height = 120;
+  draw();
+}
+window.addEventListener('resize', () => { if (document.getElementById('s-game').classList.contains('active')) resizeArena(); });
+
+function draw() {
+  const c = document.getElementById('arena');
+  const ctx = c.getContext('2d');
+  const w = c.width, h = c.height;
+  ctx.clearRect(0,0,w,h);
+  const cell = w / 10;
+  // фон поля
+  for (let i = 0; i < 10; i++) {
+    ctx.fillStyle = i % 2 === 0 ? '#0d0d0d' : '#111';
+    ctx.fillRect(i*cell, 0, cell, h);
+  }
+  // башни
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, h/2-25, cell*0.7, 50);
+  ctx.fillStyle = '#333';
+  ctx.fillRect(w-cell*0.7, h/2-25, cell*0.7, 50);
+  // юниты
+  for (const u of state.units) {
+    const x = u.pos * cell + cell/2;
+    const y = h/2;
+    ctx.beginPath();
+    ctx.arc(x, y, cell*0.35, 0, Math.PI*2);
+    ctx.fillStyle = u.owner === 'white' ? '#fff' : '#555';
+    ctx.fill();
+    ctx.fillStyle = u.owner === 'white' ? '#000' : '#fff';
+    ctx.font = 'bold ' + Math.floor(cell*0.35) + 'px -apple-system';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(u.name[0], x, y+1);
+  }
+}
+
+function render() {
+  const me = state.players[mySide];
+  const enemy = state.players[mySide === 'white' ? 'black' : 'white'];
+  document.getElementById('myHp').textContent = me ? me.tower_hp : 100;
+  document.getElementById('enemyHp').textContent = enemy ? enemy.tower_hp : 100;
+  const elixir = me ? me.elixir : 0;
+  document.getElementById('elixirFill').style.width = (elixir/10*100) + '%';
+  document.querySelectorAll('.card').forEach(el => {
+    const id = Number(el.dataset.id);
+    const card = cards.find(c => c.id === id);
+    el.classList.toggle('disabled', !me || elixir < card.cost);
+  });
+  draw();
+}
+
+function leaveGame() {
+  ws?.close?.(); ws = null; code = null; state = {players:{white:null,black:null},units:[]};
+  document.getElementById('createForm').classList.remove('hidden');
+  document.getElementById('createResult').classList.add('hidden');
+  go('menu');
+}
+
 document.getElementById('joinCode').addEventListener('input', e => { e.target.value = e.target.value.replace(/\D/g,''); });
-document.getElementById('chatInput').addEventListener('keydown', e => { if (e.key==='Enter') sendChat(); });
 </script>
 </body>
 </html>
