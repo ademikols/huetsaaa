@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎬 Кинотеатр</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #000;
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .container {
+            max-width: 100%;
+            padding: 20px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px 0;
+            border-bottom: 2px solid #333;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .header p {
+            color: #999;
+            font-size: 14px;
+        }
+
+        .mode-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            justify-content: center;
+        }
+
+        .mode-btn {
+            padding: 12px 24px;
+            border: 2px solid #fff;
+            background: transparent;
+            color: #fff;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.3s;
+            border-radius: 4px;
+        }
+
+        .mode-btn.active {
+            background: #fff;
+            color: #000;
+        }
+
+        .mode-btn:hover {
+            border-color: #fff;
+            transform: translateY(-2px);
+        }
+
+        .section {
+            display: none;
+        }
+
+        .section.active {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #ccc;
+        }
+
+        .input-group input,
+        .input-group textarea {
+            width: 100%;
+            padding: 14px;
+            border: 2px solid #333;
+            background: #111;
+            color: #fff;
+            font-family: inherit;
+            border-radius: 4px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .input-group input:focus,
+        .input-group textarea:focus {
+            outline: none;
+            border-color: #fff;
+            background: #1a1a1a;
+        }
+
+        .button {
+            padding: 14px 30px;
+            background: #fff;
+            color: #000;
+            border: none;
+            font-weight: 700;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .button:hover {
+            background: #ddd;
+            transform: translateY(-2px);
+        }
+
+        .button.secondary {
+            background: transparent;
+            color: #fff;
+            border: 2px solid #fff;
+        }
+
+        .button.secondary:hover {
+            background: #fff;
+            color: #000;
+        }
+
+        .button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .video-player {
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            background: #111;
+            border: 2px solid #333;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .video-info {
+            background: #111;
+            padding: 20px;
+            border: 2px solid #333;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+
+        .video-info h2 {
+            font-size: 18px;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .video-info p {
+            color: #999;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .code-display {
+            background: #111;
+            padding: 20px;
+            border: 2px solid #fff;
+            border-radius: 4px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .code-display .label {
+            color: #999;
+            font-size: 12px;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .code-display .code {
+            font-size: 32px;
+            font-weight: 700;
+            letter-spacing: 4px;
+            font-family: 'Courier New', monospace;
+            margin-bottom: 15px;
+        }
+
+        .copy-btn {
+            width: 100%;
+            padding: 10px;
+            background: #fff;
+            color: #000;
+            border: none;
+            border-radius: 4px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .copy-btn:hover {
+            background: #ddd;
+        }
+
+        .copy-btn.copied {
+            background: #4caf50;
+            color: #fff;
+        }
+
+        .session-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .session-item {
+            background: #111;
+            padding: 15px;
+            border: 2px solid #333;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .session-item:hover {
+            border-color: #fff;
+            transform: translateX(5px);
+        }
+
+        .session-item .title {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .session-item .meta {
+            color: #999;
+            font-size: 12px;
+        }
+
+        .message {
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            animation: slideIn 0.3s ease;
+        }
+
+        .message.error {
+            background: #4a1f1f;
+            border: 2px solid #8b3333;
+            color: #ff6b6b;
+        }
+
+        .message.success {
+            background: #1f4a2f;
+            border: 2px solid #338b4d;
+            color: #51cf66;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateY(-10px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #333;
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .divider {
+            height: 1px;
+            background: #333;
+            margin: 30px 0;
+        }
+
+        .footer {
+            text-align: center;
+            color: #666;
+            font-size: 12px;
+            padding: 20px 0;
+            border-top: 1px solid #333;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 15px;
+            }
+
+            .header h1 {
+                font-size: 24px;
+            }
+
+            .mode-selector {
+                flex-direction: column;
+            }
+
+            .mode-btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎬 КИНОТЕАТР</h1>
+            <p>Смотрите вместе, одновременно</p>
+        </div>
+
+        <div id="messageContainer"></div>
+
+        <div class="mode-selector">
+            <button class="mode-btn active" onclick="switchMode('create')">+ СОЗДАТЬ</button>
+            <button class="mode-btn" onclick="switchMode('join')">ПРИСОЕДИНИТЬСЯ</button>
+            <button class="mode-btn" onclick="switchMode('watch')">СМОТРЕТЬ</button>
+        </div>
+
+        <!-- СОЗДАТЬ СЕССИЮ -->
+        <div id="create" class="section active">
+            <div class="input-group">
+                <label>Ссылка на видео</label>
+                <input type="url" id="videoUrl" placeholder="Вставьте ссылку из YouTube, VK или RuTube...">
+            </div>
+
+            <div class="input-group">
+                <label>Название сессии (опционально)</label>
+                <input type="text" id="sessionName" placeholder="Например: Вечерний просмотр с друзьями">
+            </div>
+
+            <button class="button" onclick="createSession()">🎯 СОЗДАТЬ СЕССИЮ</button>
+
+            <div class="divider"></div>
+
+            <div id="createdSession" style="display: none;">
+                <div class="code-display">
+                    <div class="label">КОД СЕССИИ (ПОДЕЛИСЬ С ДРУЗЬЯМИ)</div>
+                    <div class="code" id="sessionCode"></div>
+                    <button class="copy-btn" id="copyBtn" onclick="copyCode()">📋 СКОПИРОВАТЬ КОД</button>
+                </div>
+
+                <div class="video-info">
+                    <h2>📊 ИНФОРМАЦИЯ</h2>
+                    <p>Отправь этот код друзьям, они смогут присоединиться к сессии через кнопку "ПРИСОЕДИНИТЬСЯ"</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ПРИСОЕДИНИТЬСЯ -->
+        <div id="join" class="section">
+            <div class="input-group">
+                <label>Введи код сессии</label>
+                <input type="text" id="joinCode" placeholder="Например: 12345" maxlength="6">
+            </div>
+
+            <button class="button" onclick="joinSession()">✅ ПРИСОЕДИНИТЬСЯ</button>
+
+            <div class="divider"></div>
+
+            <div id="joinedSession" style="display: none;">
+                <div class="video-info">
+                    <h2>✅ УСПЕШНО!</h2>
+                    <p id="joinMessage"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- СМОТРЕТЬ -->
+        <div id="watch" class="section">
+            <div class="video-player" id="videoPlayer">
+                <p style="padding: 20px; color: #999;">Видеоплеер загружается...</p>
+            </div>
+
+            <div class="video-info">
+                <h2>📺 Текущее видео</h2>
+                <p id="watchInfo">Подключитесь к сессии чтобы начать просмотр</p>
+            </div>
+
+            <button class="button secondary" onclick="switchMode('create')">➕ НОВАЯ СЕССИЯ</button>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>© 2024 Кинотеатр | v1.0</p>
+    </div>
+
+    <script>
+        // Функции работы с сессиями
+        function switchMode(mode) {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.getElementById(mode).classList.add('active');
+            document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+        }
+
+        function extractVideoId(url) {
+            // YouTube
+            if (url.includes('youtube.com') || url.includes('youtu.be')) {
+                const id = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{11})/);
+                return id ? { type: 'youtube', id: id[1] } : null;
+            }
+            // VK
+            if (url.includes('vk.com/video')) {
+                const id = url.match(/video(-?\d+_\d+)/);
+                return id ? { type: 'vk', id: id[1] } : null;
+            }
+            // RuTube
+            if (url.includes('rutube.ru')) {
+                const id = url.match(/video\/([\w-]+)/);
+                return id ? { type: 'rutube', id: id[1] } : null;
+            }
+            return null;
+        }
+
+        function createSession() {
+            const url = document.getElementById('videoUrl').value;
+            const name = document.getElementById('sessionName').value || 'Просмотр видео';
+
+            if (!url) {
+                showMessage('❌ Вставьте ссылку на видео', 'error');
+                return;
+            }
+
+            const video = extractVideoId(url);
+            if (!video) {
+                showMessage('❌ Ссылка не поддерживается. Используйте YouTube, VK или RuTube', 'error');
+                return;
+            }
+
+            // Генерируем код
+            const code = String(Math.floor(Math.random() * 900000) + 100000);
+            
+            // Сохраняем в localStorage
+            localStorage.setItem('sessionCode', code);
+            localStorage.setItem('sessionName', name);
+            localStorage.setItem('videoUrl', url);
+            localStorage.setItem('videoType', video.type);
+            localStorage.setItem('videoId', video.id);
+
+            document.getElementById('sessionCode').textContent = code;
+            document.getElementById('createdSession').style.display = 'block';
+
+            showMessage('✅ Сессия создана! Поделись кодом с друзьями', 'success');
+        }
+
+        function joinSession() {
+            const code = document.getElementById('joinCode').value.trim();
+
+            if (!code) {
+                showMessage('❌ Введите код сессии', 'error');
+                return;
+            }
+
+            // Здесь должна быть проверка кода на сервере
+            // Пока используем локальное хранилище
+            localStorage.setItem('joinedCode', code);
+
+            document.getElementById('joinMessage').textContent = 
+                `Вы присоединились к сессии ${code}. Переходите на вкладку "СМОТРЕТЬ"`;
+            document.getElementById('joinedSession').style.display = 'block';
+
+            showMessage('✅ Вы присоединились к сессии!', 'success');
+        }
+
+        function copyCode() {
+            const code = document.getElementById('sessionCode').textContent;
+            navigator.clipboard.writeText(code).then(() => {
+                const btn = document.getElementById('copyBtn');
+                btn.textContent = '✅ СКОПИРОВАНО';
+                btn.classList.add('copied');
+                setTimeout(() => {
+                    btn.textContent = '📋 СКОПИРОВАТЬ КОД';
+                    btn.classList.remove('copied');
+                }, 2000);
+            });
+        }
+
+        function showMessage(text, type) {
+            const container = document.getElementById('messageContainer');
+            const msg = document.createElement('div');
+            msg.className = `message ${type}`;
+            msg.textContent = text;
+            container.appendChild(msg);
+
+            setTimeout(() => msg.remove(), 4000);
+        }
+
+        // Инициализация
+        window.addEventListener('load', () => {
+            console.log('✅ Приложение загружено');
+        });
+    </script>
+</body>
+</html>
