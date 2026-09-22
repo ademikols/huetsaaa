@@ -3,14 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Clash Mini</title>
+<title>Hog 2.6</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-  body{background:#000;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display',sans-serif;min-height:100vh;overflow-x:hidden}
-  .top{position:sticky;top:0;z-index:10;background:#000;padding:14px 16px;border-bottom:1px solid #1a1a1a;text-align:center}
-  .top h1{font-size:13px;letter-spacing:4px;font-weight:700;text-transform:uppercase}
-  .screen{display:none;padding:16px 16px 90px;animation:fade .2s}
+  body{background:#000;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display',sans-serif;min-height:100vh;overflow:hidden}
+  .top{position:sticky;top:0;z-index:10;background:#000;padding:10px 16px;border-bottom:1px solid #1a1a1a;text-align:center}
+  .top h1{font-size:12px;letter-spacing:3px;font-weight:700;text-transform:uppercase}
+  .screen{display:none;padding:16px;animation:fade .2s}
   .screen.active{display:block}
   @keyframes fade{from{opacity:0}to{opacity:1}}
   .btn{width:100%;padding:16px;background:#fff;color:#000;border:1px solid #fff;font-family:inherit;font-size:13px;font-weight:700;letter-spacing:2px;text-transform:uppercase;cursor:pointer;margin-bottom:10px}
@@ -24,27 +24,31 @@
   .code-box{border:1px solid #fff;padding:24px 18px;text-align:center;margin:16px 0}
   .code-box .lbl{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:#777;margin-bottom:10px}
   .code-box .code{font-family:'SF Mono',monospace;font-size:38px;font-weight:700;letter-spacing:6px;margin-bottom:16px}
-  .arena{width:100%;background:#0d0d0d;border:1px solid #222;margin-bottom:14px;position:relative;height:120px}
-  canvas{width:100%;height:100%;display:block}
-  .hud{display:flex;justify-content:space-between;margin-bottom:14px;font-size:12px;letter-spacing:1px;text-transform:uppercase;color:#888}
-  .hud .hp{color:#fff;font-weight:700}
-  .hand{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:14px}
-  .card{border:1px solid #222;background:#0d0d0d;padding:10px 6px;text-align:center;cursor:pointer}
-  .card:active{border-color:#fff}
-  .card.disabled{opacity:.3;pointer-events:none}
-  .card .n{font-size:11px;font-weight:700;margin-bottom:4px}
-  .card .c{font-size:14px;font-weight:700;color:#a855f7}
-  .card .s{font-size:10px;color:#666;margin-top:2px}
-  .elixir{height:10px;background:#1a1a1a;border:1px solid #222;margin-bottom:14px;position:relative;overflow:hidden}
-  .elixir-fill{height:100%;background:#a855f7;transition:width .3s;width:50%}
-  .status{text-align:center;font-size:12px;color:#888;letter-spacing:1px;margin-bottom:14px}
+  /* Game */
+  #s-game{padding:0;height:100vh;display:none;flex-direction:column;background:#000}
+  #s-game.active{display:flex}
+  .status{padding:6px 12px;font-size:10px;letter-spacing:1px;color:#888;text-transform:uppercase;text-align:center;border-bottom:1px solid #1a1a1a}
   .status .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#ff4444;margin-right:6px}
   .status .dot.on{background:#44ff88}
+  .arena-wrap{flex:1;position:relative;overflow:hidden;background:#0d0d0d}
+  canvas{display:block;width:100%;height:100%;touch-action:none}
+  .elixir-bar{height:14px;background:#1a1a1a;border-top:1px solid #222;position:relative;overflow:hidden}
+  .elixir-fill{height:100%;background:#a855f7;transition:width .2s}
+  .elixir-num{position:absolute;right:10px;top:-2px;font-family:'SF Mono',monospace;font-size:11px;color:#fff}
+  .hand{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:6px;background:#000;border-top:1px solid #1a1a1a}
+  .card{border:1px solid #222;background:#0d0d0d;padding:8px 4px;text-align:center;cursor:pointer;position:relative;min-height:60px;display:flex;flex-direction:column;justify-content:center;align-items:center}
+  .card:active{border-color:#fff}
+  .card.selected{border-color:#fff;background:#1a1a1a}
+  .card.disabled{opacity:.3;pointer-events:none}
+  .card .n{font-size:10px;font-weight:700;line-height:1.1}
+  .card .c{position:absolute;top:3px;right:4px;font-size:10px;font-weight:700;color:#a855f7;font-family:'SF Mono',monospace}
+  .hint{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#fff;background:rgba(0,0,0,.7);padding:12px 20px;font-size:12px;letter-spacing:2px;pointer-events:none;border:1px solid #fff;display:none}
+  .hint.show{display:block}
 </style>
 </head>
 <body>
 
-<div class="top"><h1 id="title">CLASH MINI</h1></div>
+<div class="top" id="topBar"><h1 id="title">HOG 2.6</h1></div>
 
 <div id="s-menu" class="screen active">
   <button class="btn" onclick="go('create')">СОЗДАТЬ ИГРУ</button>
@@ -56,7 +60,7 @@
     <div class="field"><label>Твоё имя</label><input id="createName" type="text" placeholder="Игрок"></div>
     <button class="btn" onclick="createGame()">СОЗДАТЬ</button>
   </div>
-  <div id="createResult" class="hidden">
+  <div id="createResult" class="hidden" style="display:none">
     <div class="code-box">
       <div class="lbl">КОД ИГРЫ</div>
       <div class="code" id="newCode">000000</div>
@@ -74,14 +78,15 @@
 
 <div id="s-game" class="screen">
   <div class="status"><span class="dot" id="wsDot"></span><span id="wsStatus">ПОДКЛЮЧЕНИЕ...</span></div>
-  <div class="hud">
-    <span>ТЫ: <span class="hp" id="myHp">100</span> HP</span>
-    <span>ВРАГ: <span class="hp" id="enemyHp">100</span> HP</span>
+  <div class="arena-wrap">
+    <canvas id="arena"></canvas>
+    <div class="hint" id="hint">ТАПНИ ПО КЛЕТКЕ</div>
   </div>
-  <div class="arena"><canvas id="arena"></canvas></div>
-  <div class="elixir"><div class="elixir-fill" id="elixirFill"></div></div>
+  <div class="elixir-bar">
+    <div class="elixir-fill" id="elixirFill" style="width:50%"></div>
+    <div class="elixir-num" id="elixirNum">5.0</div>
+  </div>
   <div class="hand" id="hand"></div>
-  <button class="btn ghost" onclick="leaveGame()">ВЫЙТИ</button>
 </div>
 
 <script>
@@ -89,29 +94,41 @@ const tg = window.Telegram?.WebApp;
 tg?.ready(); tg?.expand();
 const USER_ID = tg?.initDataUnsafe?.user?.id || Date.now();
 
+const FIELD_W = 8, FIELD_H = 14;
+const CARD_ORDER = ["hog","musketeer","ice_spirit","skeletons","ice_golem","cannon","fireball","log"];
+const CARDS = {
+  hog:       {name:"Хог",     cost:4},
+  musketeer: {name:"Мушкетёр",cost:4},
+  ice_spirit:{name:"Дух",     cost:1},
+  skeletons: {name:"Скел.",   cost:1},
+  ice_golem: {name:"Голем",   cost:2},
+  cannon:    {name:"Пушка",   cost:3},
+  fireball:  {name:"Фаербол", cost:4},
+  log:       {name:"Бревно",  cost:2},
+};
+
 let ws = null, code = null, mySide = null;
-let state = {players:{white:null,black:null}, units:[]};
-const cards = [
-  {id:1,name:'Гоблин',cost:2,atk:8,hp:15},
-  {id:2,name:'Лучник',cost:3,atk:12,hp:20},
-  {id:3,name:'Рыцарь',cost:4,atk:18,hp:35},
-  {id:4,name:'Гигант',cost:5,atk:25,hp:60},
-];
+let state = {players:{bottom:null, top:null}, units:[], effects:[]};
+let myHand = [...CARD_ORDER];
+let selectedCard = null;
+let placing = false;
+let canvas, ctx, cellW = 0, cellH = 0;
 
 function go(s) {
   document.querySelectorAll('.screen').forEach(x => x.classList.remove('active'));
   document.getElementById('s-' + s).classList.add('active');
-  if (s === 'game') resizeArena();
+  document.getElementById('topBar').style.display = (s === 'game') ? 'none' : 'block';
+  if (s === 'game') setTimeout(resize, 50);
 }
 
 async function createGame() {
   const name = document.getElementById('createName').value.trim() || 'Игрок';
   const r = await fetch('/api/game/create', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:USER_ID,username:name})});
   const d = await r.json();
-  code = d.code; mySide = 'white';
+  code = d.code; mySide = 'bottom';
   document.getElementById('newCode').textContent = d.code;
-  document.getElementById('createForm').classList.add('hidden');
-  document.getElementById('createResult').classList.remove('hidden');
+  document.getElementById('createForm').style.display = 'none';
+  document.getElementById('createResult').style.display = 'block';
 }
 function copyCode() {
   const c = document.getElementById('newCode').textContent;
@@ -126,15 +143,29 @@ async function joinGame() {
   const r = await fetch('/api/game/join', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:c,user_id:USER_ID,username:name})});
   const d = await r.json();
   if (!d.ok) { tg?.showAlert?.(d.error); return; }
-  code = c; mySide = 'black';
+  code = c; mySide = 'top';
   openGame();
 }
 
 function openGame() {
   go('game');
-  connectWS();
+  canvas = document.getElementById('arena');
+  ctx = canvas.getContext('2d');
   renderHand();
+  connectWS();
+  resize();
 }
+
+function resize() {
+  if (!canvas) return;
+  const wrap = canvas.parentElement;
+  canvas.width = wrap.clientWidth;
+  canvas.height = wrap.clientHeight;
+  cellW = canvas.width / FIELD_W;
+  cellH = canvas.height / FIELD_H;
+  draw();
+}
+window.addEventListener('resize', resize);
 
 function connectWS() {
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
@@ -155,84 +186,201 @@ function handleWS(msg) {
     render();
   } else if (msg.type === 'gameover') {
     tg?.showAlert?.(msg.winner === mySide ? '🏆 ПОБЕДА!' : '💀 ПОРАЖЕНИЕ');
-    leaveGame();
+    setTimeout(() => { ws?.close?.(); go('menu'); }, 1500);
   }
 }
 
 function renderHand() {
   const h = document.getElementById('hand');
-  h.innerHTML = cards.map(c => `
-    <div class="card" data-id="${c.id}" onclick="playCard(${c.id})">
+  h.innerHTML = myHand.map(id => {
+    const c = CARDS[id];
+    return `<div class="card" data-id="${id}" onclick="selectCard('${id}')">
+      <div class="c">${c.cost}</div>
       <div class="n">${c.name}</div>
-      <div class="c">${c.cost}⚡</div>
-      <div class="s">${c.atk}/${c.hp}</div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
-function playCard(id) {
+function selectCard(id) {
+  const c = CARDS[id];
+  const me = state.players[mySide];
+  if (!me || me.elixir < c.cost) return;
+  selectedCard = id;
+  placing = true;
+  document.querySelectorAll('.card').forEach(el => el.classList.toggle('selected', el.dataset.id === id));
+  document.getElementById('hint').classList.add('show');
+  document.getElementById('hint').textContent = 'ТАПНИ ГДЕ РАЗМЕСТИТЬ';
+}
+
+canvas?.addEventListener('click', handleCanvasClick);
+
+function handleCanvasClick(e) {
+  if (!placing || !selectedCard) return;
+  const rect = canvas.getBoundingClientRect();
+  const px = e.clientX - rect.left;
+  const py = e.clientY - rect.top;
+  const gx = px / cellW;
+  const gy = py / cellH;
   if (!ws || ws.readyState !== 1) return;
-  ws.send(JSON.stringify({type:'play_card', player:mySide, card_id:id}));
+  ws.send(JSON.stringify({
+    type: 'play_card',
+    side: mySide,
+    card_id: selectedCard,
+    x: gx,
+    y: gy,
+  }));
+  selectedCard = null;
+  placing = false;
+  document.querySelectorAll('.card').forEach(el => el.classList.remove('selected'));
+  document.getElementById('hint').classList.remove('show');
 }
-
-function resizeArena() {
-  const c = document.getElementById('arena');
-  const w = c.parentElement.clientWidth;
-  c.width = w; c.height = 120;
-  draw();
-}
-window.addEventListener('resize', () => { if (document.getElementById('s-game').classList.contains('active')) resizeArena(); });
 
 function draw() {
-  const c = document.getElementById('arena');
-  const ctx = c.getContext('2d');
-  const w = c.width, h = c.height;
-  ctx.clearRect(0,0,w,h);
-  const cell = w / 10;
-  // фон поля
-  for (let i = 0; i < 10; i++) {
-    ctx.fillStyle = i % 2 === 0 ? '#0d0d0d' : '#111';
-    ctx.fillRect(i*cell, 0, cell, h);
+  if (!ctx || !canvas) return;
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  // Фон поля
+  ctx.fillStyle = '#1a1a1a';
+  ctx.fillRect(0, 0, W, H);
+
+  // Река
+  ctx.fillStyle = '#1e3a5f';
+  ctx.fillRect(0, 6 * cellH, W, 2 * cellH);
+
+  // Мосты
+  ctx.fillStyle = '#3a2a1a';
+  ctx.fillRect(1 * cellW, 6 * cellH, 2 * cellW, 2 * cellH);
+  ctx.fillRect(5 * cellW, 6 * cellH, 2 * cellW, 2 * cellH);
+
+  // Сетка
+  ctx.strokeStyle = '#222';
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= FIELD_W; i++) {
+    ctx.beginPath(); ctx.moveTo(i * cellW, 0); ctx.lineTo(i * cellW, H); ctx.stroke();
   }
-  // башни
-  ctx.fillStyle = '#fff';
-  ctx.fillRect(0, h/2-25, cell*0.7, 50);
-  ctx.fillStyle = '#333';
-  ctx.fillRect(w-cell*0.7, h/2-25, cell*0.7, 50);
-  // юниты
+  for (let i = 0; i <= FIELD_H; i++) {
+    ctx.beginPath(); ctx.moveTo(0, i * cellH); ctx.lineTo(W, i * cellH); ctx.stroke();
+  }
+
+  // Подсветка моей зоны
+  const me = state.players[mySide];
+  if (me && mySide) {
+    ctx.fillStyle = 'rgba(80, 200, 120, 0.04)';
+    if (mySide === 'bottom') ctx.fillRect(0, 7 * cellH, W, 7 * cellH);
+    else ctx.fillRect(0, 0, W, 7 * cellH);
+  }
+
+  // Башни
+  for (const side of ['bottom', 'top']) {
+    const p = state.players[side];
+    if (!p) continue;
+    for (const t of p.towers) {
+      drawTower(t, side);
+    }
+  }
+
+  // Юниты
   for (const u of state.units) {
-    const x = u.pos * cell + cell/2;
-    const y = h/2;
-    ctx.beginPath();
-    ctx.arc(x, y, cell*0.35, 0, Math.PI*2);
-    ctx.fillStyle = u.owner === 'white' ? '#fff' : '#555';
-    ctx.fill();
-    ctx.fillStyle = u.owner === 'white' ? '#000' : '#fff';
-    ctx.font = 'bold ' + Math.floor(cell*0.35) + 'px -apple-system';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(u.name[0], x, y+1);
+    drawUnit(u);
+  }
+
+  // Эффекты
+  for (const e of state.effects) {
+    if (e.type === 'spell') {
+      const gx = e.x * cellW, gy = e.y * cellH;
+      const r = e.radius * cellW;
+      const grad = ctx.createRadialGradient(gx, gy, 0, gx, gy, r);
+      const color = e.card === 'fireball' ? 'rgba(255,120,0,' : 'rgba(200,180,120,';
+      grad.addColorStop(0, color + (e.life * 0.6) + ')');
+      grad.addColorStop(1, color + '0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath(); ctx.arc(gx, gy, r, 0, Math.PI * 2); ctx.fill();
+    } else if (e.type === 'slow') {
+      ctx.strokeStyle = `rgba(100,200,255,${e.life})`;
+      ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(e.x * cellW, e.y * cellH, e.radius * cellW, 0, Math.PI * 2); ctx.stroke();
+    }
+  }
+}
+
+function drawTower(t, side) {
+  const x = t.x * cellW;
+  const y = t.y * cellH;
+  const w = cellW * 1.2;
+  const h = cellH * 1.2;
+  const color = side === 'bottom' ? '#4a7fb5' : '#b54a4a';
+  ctx.fillStyle = color;
+  ctx.fillRect(x - w/2, y - h/2, w, h);
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x - w/2, y - h/2, w, h);
+  // HP bar
+  const hpPct = Math.max(0, t.hp / t.max_hp);
+  ctx.fillStyle = '#000';
+  ctx.fillRect(x - w/2, y - h/2 - 8, w, 5);
+  ctx.fillStyle = side === 'bottom' ? '#44ff88' : '#ff4444';
+  ctx.fillRect(x - w/2, y - h/2 - 8, w * hpPct, 5);
+}
+
+function drawUnit(u) {
+  const x = u.x * cellW;
+  const y = u.y * cellH;
+  const r = Math.min(cellW, cellH) * 0.35;
+  const isMine = u.owner === mySide;
+  let color;
+  if (u.owner === 'bottom') color = isMine ? '#5aa0e0' : '#5aa0e0';
+  else color = isMine ? '#e05a5a' : '#e05a5a';
+  if (u.owner === 'bottom') color = '#5aa0e0';
+  else color = '#e05a5a';
+
+  // тень
+  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  ctx.beginPath(); ctx.ellipse(x, y + r*0.7, r*0.9, r*0.35, 0, 0, Math.PI*2); ctx.fill();
+
+  // тело
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2);
+  ctx.fillStyle = color;
+  ctx.fill();
+  ctx.strokeStyle = '#000';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // буква
+  const letter = (CARDS[u.card]?.name || '?')[0].toUpperCase();
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold ' + Math.floor(r*1.1) + 'px -apple-system,sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(letter, x, y + 1);
+
+  // заморозка
+  if (u.frozen > 0) {
+    ctx.strokeStyle = 'rgba(100,200,255,0.9)';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(x, y, r + 3, 0, Math.PI*2); ctx.stroke();
+  }
+
+  // HP bar
+  if (u.hp < u.max_hp) {
+    const hpPct = Math.max(0, u.hp / u.max_hp);
+    ctx.fillStyle = '#000';
+    ctx.fillRect(x - r, y - r - 6, r*2, 3);
+    ctx.fillStyle = '#44ff88';
+    ctx.fillRect(x - r, y - r - 6, r*2 * hpPct, 3);
   }
 }
 
 function render() {
   const me = state.players[mySide];
-  const enemy = state.players[mySide === 'white' ? 'black' : 'white'];
-  document.getElementById('myHp').textContent = me ? me.tower_hp : 100;
-  document.getElementById('enemyHp').textContent = enemy ? enemy.tower_hp : 100;
+  const enemy = state.players[mySide === 'bottom' ? 'top' : 'bottom'];
   const elixir = me ? me.elixir : 0;
   document.getElementById('elixirFill').style.width = (elixir/10*100) + '%';
+  document.getElementById('elixirNum').textContent = elixir.toFixed(1);
   document.querySelectorAll('.card').forEach(el => {
-    const id = Number(el.dataset.id);
-    const card = cards.find(c => c.id === id);
-    el.classList.toggle('disabled', !me || elixir < card.cost);
+    const c = CARDS[el.dataset.id];
+    el.classList.toggle('disabled', !me || elixir < c.cost);
   });
   draw();
-}
-
-function leaveGame() {
-  ws?.close?.(); ws = null; code = null; state = {players:{white:null,black:null},units:[]};
-  document.getElementById('createForm').classList.remove('hidden');
-  document.getElementById('createResult').classList.add('hidden');
-  go('menu');
 }
 
 document.getElementById('joinCode').addEventListener('input', e => { e.target.value = e.target.value.replace(/\D/g,''); });
