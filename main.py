@@ -1,6 +1,5 @@
 import asyncio
 import json
-import sqlite3
 import os
 import random
 from datetime import datetime
@@ -13,144 +12,175 @@ from dotenv import load_dotenv
 load_dotenv()
 
 TOKEN = os.getenv("BOT_TOKEN")
-ADMIN_ID = int(os.getenv("ADMIN_ID", "0"))
 WEB_APP_URL = os.getenv("WEB_APP_URL", "https://yourdomain.com").rstrip("/")
 PORT = int(os.getenv("PORT", "3000"))
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
-def init_db():
-    conn = sqlite3.connect("movies.db"); c = conn.cursor()
-    c.execute('CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY, username TEXT, created_at TIMESTAMP)')
-    conn.commit(); conn.close()
+games = {}  # code -> game dict
 
-def add_user(user_id, username):
-    conn = sqlite3.connect("movies.db"); c = conn.cursor()
-    c.execute("INSERT OR IGNORE INTO users VALUES (?, ?, ?)", (user_id, username, datetime.now()))
-    conn.commit(); conn.close()
+CARDS = [
+    {"id": 1, "name": "Гоблин",   "cost": 2, "atk": 8,  "hp": 15, "speed": 1},
+    {"id": 2, "name": "Лучник",   "cost": 3, "atk": 12, "hp": 20, "speed": 1},
+    {"id": 3, "name": "Рыцарь",   "cost": 4, "atk": 18, "hp": 35, "speed": 1},
+    {"id": 4, "name": "Гигант",   "cost": 5, "atk": 25, "hp": 60, "speed": 1},
+]
 
-# ---------- Комнаты ----------
-rooms = {}
+def new_game(code, host_id, host_name):
+    return {
+        "code": code,
+        "players": {
+            "white": {"user_id": host_id, "username": host_name, "elixir": 5.0, "tower_hp": 100},
+            "black": None,
+        },
+        "units": [],  # {"owner": "white"|"black", "pos": int, "hp": int, "atk": int, "speed": int, "name": str}
+        "tick": 0,
+        "clients": set(),
+        "last_tick": datetime.now().timestamp(),
+    }
 
 def gen_code():
     while True:
         c = str(random.randint(100000, 999999))
-        if c not in rooms: return c
-
-def room_public(r):
-    return {"code": r["code"], "name": r["name"], "video_url": r["video_url"],
-            "film": r["film"], "participants": r["participants"]}
+        if c not in games: return c
 
 async def api_create(request):
     d = await request.json()
     code = gen_code()
-    session = {
-        "code": code, "name": d.get("name") or "Комната",
-        "video_url": d.get("video_url") or "", "film": d.get("film"),
-        "host_id": d.get("user_id"), "created_at": datetime.now().isoformat(),
-        "participants": [{"user_id": d.get("user_id"), "username": d.get("username") or "guest"}],
-        "state": {"video_url": d.get("video_url") or "", "time": 0, "is_playing": False},
-        "clients": set()
-    }
-    rooms[code] = session
-    return web.json_response({"ok": True, "code": code, "session": room_public(session)})
+    games[code] = new_game(code, d.get("user_id"), d.get("username") or "guest")
+    return web.json_response({"ok": True, "code": code})
 
 async def api_join(request):
     d = await request.json()
     code = str(d.get("code", "")).strip()
-    s = rooms.get(code)
-    if not s: return web.json_response({"ok": False, "error": "Комната не найдена"}, status=404)
-    uid = d.get("user_id")
-    if not any(p.get("user_id") == uid for p in s["participants"]):
-        s["participants"].append({"user_id": uid, "username": d.get("username") or "guest"})
-    return web.json_response({"ok": True, "session": room_public(s)})
+    g = games.get(code)
+    if not g: return web.json_response({"ok": False, "error": "Игра не найдена"}, status=404)
+    if g["players"]["black"]:
+        return web.json_response({"ok": False, "error": "Игра заполнена"}, status=400)
+    g["players"]["black"] = {"user_id": d.get("user_id"), "username": d.get("username") or "guest", "elixir": 5.0, "tower_hp": 100}
+    return web.json_response({"ok": True, "code": code})
 
-# ---------- WebSocket ----------
-async def ws_handler(request):
+async def ws_game(request):
     code = request.match_info.get("code")
     ws = web.WebSocketResponse()
     await ws.prepare(request)
-    s = rooms.get(code)
-    if not s:
-        await ws.send_json({"type": "error", "error": "Комната не найдена"})
+    g = games.get(code)
+    if not g:
+        await ws.send_json({"type": "error", "error": "Игра не найдена"})
         await ws.close(); return ws
-    s["clients"].add(ws)
-    await ws.send_json({"type": "state", "state": s["state"], "members": s["participants"]})
-    await broadcast_members(s)
+    g["clients"].add(ws)
+    await ws.send_json({"type": "state", "state": public_state(g)})
     try:
         async for msg in ws:
             if msg.type != web.WSMsgType.TEXT: continue
             try: data = json.loads(msg.data)
             except: continue
             t = data.get("type")
-            if t == "set_video":
-                s["state"]["video_url"] = data.get("url", "")
-                s["state"]["time"] = 0; s["state"]["is_playing"] = False
-                await broadcast(s, data, exclude=ws)
-            elif t == "play":
-                s["state"]["is_playing"] = True
-                s["state"]["time"] = data.get("time", 0)
-                await broadcast(s, data, exclude=ws)
-            elif t == "pause":
-                s["state"]["is_playing"] = False
-                s["state"]["time"] = data.get("time", 0)
-                await broadcast(s, data, exclude=ws)
-            elif t == "seek":
-                s["state"]["time"] = data.get("time", 0)
-                await broadcast(s, data, exclude=ws)
-            elif t == "chat":
-                await broadcast(s, {"type":"chat","username":data.get("username","guest"),"text":data.get("text","")}, exclude=ws)
-            elif t == "join":
-                uid = data.get("user_id")
-                if not any(p.get("user_id") == uid for p in s["participants"]):
-                    s["participants"].append({"user_id": uid, "username": data.get("username") or "guest"})
-                await broadcast_members(s)
+            if t == "play_card":
+                player = data.get("player")  # "white" | "black"
+                card_id = data.get("card_id")
+                p = g["players"].get(player)
+                if not p: continue
+                card = next((c for c in CARDS if c["id"] == card_id), None)
+                if not card: continue
+                if p["elixir"] < card["cost"]: continue
+                p["elixir"] -= card["cost"]
+                start_pos = 1 if player == "white" else 8
+                g["units"].append({
+                    "owner": player, "pos": start_pos, "hp": card["hp"],
+                    "atk": card["atk"], "speed": card["speed"], "name": card["name"]
+                })
+                await broadcast(g, {"type": "state", "state": public_state(g)}, exclude=None)
     finally:
-        s["clients"].discard(ws)
-        await broadcast_members(s)
+        g["clients"].discard(ws)
     return ws
 
-async def broadcast(s, data, exclude=None):
-    for c in list(s["clients"]):
+def public_state(g):
+    return {
+        "players": {
+            "white": g["players"]["white"] and {"username": g["players"]["white"]["username"], "elixir": round(g["players"]["white"]["elixir"], 1), "tower_hp": g["players"]["white"]["tower_hp"]},
+            "black": g["players"]["black"] and {"username": g["players"]["black"]["username"], "elixir": round(g["players"]["black"]["elixir"], 1), "tower_hp": g["players"]["black"]["tower_hp"]},
+        },
+        "units": g["units"],
+    }
+
+async def broadcast(g, data, exclude=None):
+    for c in list(g["clients"]):
         if c is exclude or c.closed: continue
         try: await c.send_json(data)
-        except: s["clients"].discard(c)
+        except: g["clients"].discard(c)
 
-async def broadcast_members(s):
-    await broadcast(s, {"type": "members", "members": s["participants"]})
+async def game_loop():
+    """Тик каждые 0.5 сек: эликсир, движение юнитов, бой, атака башен."""
+    while True:
+        await asyncio.sleep(0.5)
+        now = datetime.now().timestamp()
+        for code, g in list(games.items()):
+            dt = now - g["last_tick"]
+            g["last_tick"] = now
+            # эликсир
+][side]["elixir            for side in (""]white", "black"):
+                = if g["players"][side min]:
+                    g["players"(10.0, g["players"][side]["elixir"] + dt * 0.5)
+            # движение юнитов
+            for u in g["units"]:
+                u["pos"] += u["speed"] if u["owner"] == "white" else -u["speed"]
+            # бой
+            dead = set()
+            for i, a in enumerate(g["units"]):
+                if i in dead: continue
+                for j, b in enumerate(g["units"]):
+                    if i >= j or j in dead or a["owner"] == b["owner"]: continue
+                    if abs(a["pos"] - b["pos"]) <= 0:
+                        b["hp"] -= a["atk"]; a["hp"] -= b["atk"]
+                        if b["hp"] <= 0: dead.add(j)
+                        if a["hp"] <= 0: dead.add(i); break
+            # атака башен
+            for i, u in enumerate(g["units"]):
+                if i in dead: continue
+                if u["owner"] == "white" and u["pos"] >= 9:
+                    g["players"]["black"]["tower_hp"] -= u["atk"]
+                    dead.add(i)
+                elif u["owner"] == "black" and u["pos"] <= 0:
+                    g["players"]["white"]["tower_hp"] -= u["atk"]
+                    dead.add(i)
+            # убираем мёртвых
+            g["units"] = [u for i, u in enumerate(g["units"]) if i not in dead]
+            # конец игры
+            w_hp = g["players"]["white"] and g["players"]["white"]["tower_hp"]
+            b_hp = g["players"]["black"] and g["players"]["black"]["tower_hp"]
+            if (w_hp is not None and w_hp <= 0) or (b_hp is not None and b_hp <= 0):
+                await broadcast(g, {"type": "gameover", "winner": "black" if w_hp <= 0 else "white"})
+                games.pop(code, None)
+                continue
+            if g["clients"]:
+                await broadcast(g, {"type": "state", "state": public_state(g)})
 
-# ---------- Файлы ----------
 async def handle_index(request):
     if os.path.exists("app.html"): return web.FileResponse("app.html")
     return web.Response(text="app.html not found", status=404)
-
-async def handle_health(request): return web.json_response({"ok": True})
 
 async def start_web():
     app = web.Application()
     app.router.add_get("/", handle_index)
     app.router.add_get("/app.html", handle_index)
-    app.router.add_get("/health", handle_health)
-    app.router.add_post("/api/session/create", api_create)
-    app.router.add_post("/api/session/join", api_join)
-    app.router.add_get("/ws/{code}", ws_handler)
+    app.router.add_post("/api/game/create", api_create)
+    app.router.add_post("/api/game/join", api_join)
+    app.router.add_get("/ws/game/{code}", ws_game)
     runner = web.AppRunner(app); await runner.setup()
     await web.TCPSite(runner, "0.0.0.0", PORT).start()
     print(f"🔧 Веб-сервер слушает 0.0.0.0:{PORT}", flush=True)
+    asyncio.create_task(game_loop())
 
-# ---------- Бот ----------
 @dp.message(Command("start"))
 async def start(message: types.Message):
-    add_user(message.from_user.id, message.from_user.username or "unknown")
     kb = InlineKeyboardMarkup(inline_keyboard=[[
-        InlineKeyboardButton(text="🎬 Открыть кинотеатр",
-            web_app=WebAppInfo(url=f"{WEB_APP_URL}/app.html"))
+        InlineKeyboardButton(text="⚔ Играть", web_app=WebAppInfo(url=f"{WEB_APP_URL}/app.html"))
     ]])
-    await message.answer("🎭 Кинотеатр\n\nСпорт, фильмы и совместный просмотр.", reply_markup=kb)
+    await message.answer("⚔ Clash Mini\n\nСоздай игру или присоединись по коду.", reply_markup=kb)
 
 async def main():
-    init_db()
     await bot.delete_webhook(drop_pending_updates=True)
     await start_web()
     print("✅ Бот запущен!", flush=True)
