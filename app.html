@@ -1,487 +1,413 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🎬 Кинотеатр</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #000; color: #fff; min-height: 100vh;
-            display: flex; flex-direction: column;
-        }
-        .container { max-width: 100%; padding: 20px; flex: 1; display: flex; flex-direction: column; }
-        .header { text-align: center; margin-bottom: 20px; padding: 20px 0; border-bottom: 2px solid #333; }
-        .header h1 { font-size: 32px; font-weight: 700; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 2px; }
-        .header p { color: #999; font-size: 14px; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Кинотеатр</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root { --bg:#000; --fg:#fff; --dim:#888; --line:#222; --card:#0d0d0d; }
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body {
+    background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display',sans-serif;
+    min-height:100vh; padding-bottom:80px; overflow-x:hidden;
+  }
+  .top {
+    position:sticky; top:0; z-index:10; background:var(--bg);
+    padding:16px 20px 12px; border-bottom:1px solid var(--line);
+  }
+  .top h1 { font-size:14px; letter-spacing:4px; font-weight:700; text-transform:uppercase; text-align:center; }
+  .screen { display:none; padding:20px; animation:fade .25s ease; }
+  .screen.active { display:block; }
+  @keyframes fade { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:none} }
 
-        .mode-selector { display: flex; gap: 8px; margin-bottom: 20px; justify-content: center; flex-wrap: wrap; }
-        .mode-btn {
-            padding: 10px 16px; border: 2px solid #fff; background: transparent; color: #fff;
-            cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.3s; border-radius: 4px;
-        }
-        .mode-btn.active { background: #fff; color: #000; }
-        .mode-btn:hover { border-color: #fff; transform: translateY(-2px); }
+  .search { display:flex; gap:10px; margin-bottom:16px; }
+  .search input {
+    flex:1; background:var(--card); border:1px solid var(--line); color:var(--fg);
+    padding:14px 16px; font-size:15px; font-family:inherit; outline:none; border-radius:0;
+  }
+  .search input:focus { border-color:var(--fg); }
+  .search button {
+    background:var(--fg); color:var(--bg); border:none; padding:0 18px;
+    font-weight:700; font-size:13px; letter-spacing:1px; cursor:pointer; font-family:inherit;
+  }
+  .genres { display:flex; gap:8px; overflow-x:auto; padding-bottom:16px; scrollbar-width:none; }
+  .genres::-webkit-scrollbar { display:none; }
+  .genre {
+    background:transparent; color:var(--dim); border:1px solid var(--line);
+    padding:7px 14px; font-size:12px; white-space:nowrap; cursor:pointer;
+    font-family:inherit; text-transform:lowercase; border-radius:20px;
+  }
+  .genre.active { border-color:var(--fg); color:var(--fg); }
 
-        .section { display: none; }
-        .section.active { display: flex; flex-direction: column; }
+  .grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+  .card {
+    position:relative; aspect-ratio:2/3; background:var(--card);
+    border:1px solid var(--line); overflow:hidden; cursor:pointer; transition:border-color .15s;
+  }
+  .card:active { border-color:var(--fg); }
+  .card img { width:100%; height:100%; object-fit:cover; display:block; }
+  .card .t {
+    position:absolute; bottom:0; left:0; right:0; padding:8px 6px 6px;
+    background:linear-gradient(transparent,#000); font-size:11px; line-height:1.15; font-weight:600;
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+  }
+  .card .r {
+    position:absolute; top:6px; right:6px; background:#000; border:1px solid var(--fg);
+    padding:2px 6px; font-size:10px; font-weight:700;
+  }
 
-        .input-group { margin-bottom: 20px; }
-        .input-group label {
-            display: block; margin-bottom: 8px; font-weight: 600; font-size: 14px;
-            text-transform: uppercase; letter-spacing: 1px; color: #ccc;
-        }
-        .input-group input, .input-group textarea {
-            width: 100%; padding: 14px; border: 2px solid #333; background: #111; color: #fff;
-            font-family: inherit; border-radius: 4px; font-size: 14px; transition: border-color 0.3s;
-        }
-        .input-group input:focus { outline: none; border-color: #fff; background: #1a1a1a; }
+  .msg { padding:40px 20px; text-align:center; color:var(--dim); font-size:13px; letter-spacing:.5px; }
+  .empty-state { text-align:center; padding:60px 20px; color:var(--dim); font-size:13px; letter-spacing:1px; }
 
-        .button {
-            padding: 14px 30px; background: #fff; color: #000; border: none;
-            font-weight: 700; font-size: 16px; cursor: pointer; border-radius: 4px;
-            transition: all 0.3s; text-transform: uppercase; letter-spacing: 1px;
-        }
-        .button:hover { background: #ddd; transform: translateY(-2px); }
-        .button.secondary { background: transparent; color: #fff; border: 2px solid #fff; }
-        .button.secondary:hover { background: #fff; color: #000; }
-        .button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .detail-hero { position:relative; height:380px; background:var(--card); margin:-20px -20px 0; }
+  .detail-hero img { width:100%; height:100%; object-fit:cover; display:block; }
+  .detail-hero .grad { position:absolute; inset:0; background:linear-gradient(transparent 50%,var(--bg)); }
+  .detail-hero .back {
+    position:absolute; top:16px; left:16px; width:40px; height:40px;
+    background:rgba(0,0,0,.7); color:var(--fg); border:1px solid var(--fg); border-radius:50%;
+    font-size:18px; cursor:pointer; font-family:inherit;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .detail-body { position:relative; margin-top:-40px; }
+  .detail-body h2 { font-size:22px; font-weight:700; letter-spacing:1px; text-transform:uppercase; margin-bottom:8px; line-height:1.2; }
+  .detail-body .meta { color:var(--dim); font-size:12px; letter-spacing:1px; margin-bottom:20px; text-transform:uppercase; }
+  .detail-body .plot { font-size:14px; line-height:1.6; color:#ccc; margin-bottom:28px; }
 
-        .video-player {
-            width: 100%; aspect-ratio: 16 / 9; background: #111; border: 2px solid #333;
-            margin-bottom: 20px; border-radius: 4px; overflow: hidden;
-        }
-        .video-info { background: #111; padding: 20px; border: 2px solid #333; margin-bottom: 20px; border-radius: 4px; }
-        .video-info h2 { font-size: 18px; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
-        .video-info p { color: #999; font-size: 14px; line-height: 1.6; }
+  .btn {
+    width:100%; padding:18px; background:var(--fg); color:var(--bg);
+    border:1px solid var(--fg); font-family:inherit; font-size:14px; font-weight:700;
+    letter-spacing:2px; text-transform:uppercase; cursor:pointer; transition:all .15s;
+  }
+  .btn:active { transform:scale(.98); }
+  .btn.ghost { background:transparent; color:var(--fg); }
+  .btn.ghost:active { background:var(--fg); color:var(--bg); }
 
-        .code-display {
-            background: #111; padding: 20px; border: 2px solid #fff;
-            border-radius: 4px; text-align: center; margin-bottom: 20px;
-        }
-        .code-display .label { color: #999; font-size: 12px; text-transform: uppercase; margin-bottom: 10px; }
-        .code-display .code {
-            font-size: 32px; font-weight: 700; letter-spacing: 4px;
-            font-family: 'Courier New', monospace; margin-bottom: 15px;
-        }
-        .copy-btn {
-            width: 100%; padding: 10px; background: #fff; color: #000; border: none;
-            border-radius: 4px; font-weight: 600; cursor: pointer; transition: all 0.3s;
-        }
-        .copy-btn:hover { background: #ddd; }
-        .copy-btn.copied { background: #4caf50; color: #fff; }
+  .field { margin-bottom:16px; }
+  .field label {
+    display:block; font-size:11px; letter-spacing:2px; text-transform:uppercase;
+    color:var(--dim); margin-bottom:8px;
+  }
+  .field input {
+    width:100%; padding:16px; background:var(--card); border:1px solid var(--line);
+    color:var(--fg); font-family:inherit; font-size:15px; outline:none;
+  }
+  .field input:focus { border-color:var(--fg); }
+  .field input.code-input {
+    font-family:'SF Mono','Courier New',monospace; font-size:28px; text-align:center;
+    letter-spacing:8px; font-weight:700;
+  }
 
-        .session-list { display: flex; flex-direction: column; gap: 10px; }
-        .session-item {
-            background: #111; padding: 15px; border: 2px solid #333; border-radius: 4px;
-            cursor: pointer; transition: all 0.3s;
-        }
-        .session-item:hover { border-color: #fff; transform: translateX(5px); }
+  .code-box { border:2px solid var(--fg); padding:28px 20px; text-align:center; margin:20px 0; }
+  .code-box .lbl { font-size:10px; letter-spacing:3px; text-transform:uppercase; color:var(--dim); margin-bottom:12px; }
+  .code-box .code {
+    font-family:'SF Mono','Courier New',monospace; font-size:40px; font-weight:700;
+    letter-spacing:8px; margin-bottom:20px;
+  }
 
-        .message {
-            padding: 15px; border-radius: 4px; margin-bottom: 15px; animation: slideIn 0.3s ease;
-        }
-        .message.error { background: #4a1f1f; border: 2px solid #8b3333; color: #ff6b6b; }
-        .message.success { background: #1f4a2f; border: 2px solid #338b4d; color: #51cf66; }
-        @keyframes slideIn { from { transform: translateY(-10px); opacity: 0; } to { transform: translateY(0);; opacity: 1; } }
+  .session-card { border:1px solid var(--line); padding:20px; margin-bottom:12px; background:var(--card); }
+  .session-card .title { font-size:16px; font-weight:700; text-transform:uppercase; letter-spacing:1px; margin-bottom:6px; }
+  .session-card .sub { color:var(--dim); font-size:12px; letter-spacing:1px; }
 
- font        .loading { display: inline-block; width:-size 20px; height: 20px; border: 3px solid #333; border:-top-color: #fff; border -radius14: 50%; animation: spin 0.6s linear infinite; }
-        @keyframes spin { to { transform: rotate(360deg); } }
+  .nav {
+    position:fixed; bottom:0; left:0; right:0; background:var(--bg); border-top:1px solid var(--line);
+    display:flex; padding-bottom:env(safe-area-inset-bottom); z-index:20;
+  }
+  .nav button {
+    flex:1; padding:14px 8px; background:transparent; border:none; color:var(--dim);
+    font-family:inherit; font-size:10px; letter-spacing:1.5px; text-transform:uppercase;
+    cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:4px;
+  }
+  .nav button.active { color:var(--fg); }
+  .nav button .ico { font-size:18px; }
 
-        .divider { height: 1px; background: #333; margin: 30px 0; }
-        .footer { text-align: center; color: #666; font-size: 12px; padding: 20px 0; border-top: 1px solid #333; }
-
-        /* ===== КАТАЛОГ ===== */
-        .search-bar { display: flex; gap: 8px; margin-bottom: 14px; }
-        .search-bar input {
-            flex: 1; padding: 12px; border: 2px solid #333; background: #111;
-            color: #fff; border-radius: 4px; font-size: 14px;
-        }
-        .search-bar input:focus { outline: none; border-color: #fff; }
-        .search-bar button {
-            padding: 12px 18px; background: #fff; color: #000; border: none;
-            border-radius: 4px; font-weight: 700; cursor: pointerpx;
-        }
-
-        .genres { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 14px; margin-bottom: 6px; scrollbar-width: none; }
-        .genres::-webkit-scrollbar { display: none; }
-        .genre {
-            padding: 6px 14px; border: 2px solid #333; background: transparent; color: #999;
-            font-size: 13px; white-space: nowrap; cursor: pointer; border-radius: 020px;
-            text,-transform: lowercase; transition: all 00.2s;
-        }
-       , .genre.active { border-color: #fff; color: #fff; background: #1a1a1a; }
-
-        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-        .card {
-            position: relative; aspect-ratio: 2/3; border: 2px solid #333;
-            border-radius: 4px; overflow: hidden; background: #111; cursor: pointer;
-            transition: border-color 0.2s;
-        }
-        .card:hover { border-color: #fff; }
-        .card img { width: 100%; height: 100%; object-fit: cover; display: block; }
-        .card .title {
-            position: absolute; bottom: 0; left: 0; right: 0; padding: 6px;
-            background: linear-gradient(transparent, rgba(0,0.95));
-            font-size: 11px; line-height: 1.2; font-weight: 600;
-        }
-        .card .rating {
-            position: absolute; top: 5px; right: 5px; background: rgba(0,0,0,0.8);
-            padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 700;
-        }
-        .catalog-msg { text-align: center; padding: 40px 20px; color: #666; font-size: 14px; }
-
-        /* Детали фильма */
-        .detail-overlay {
-            position: fixed; inset: 0; background: #000; z-index: 200;
-            overflow-y: auto; display: none;
-        }
-        .detail-overlay.show { display: block; }
-        .detail-hero { position: relative; height: 300px; background: #111; border-bottom: 2px solid #333; }
-        .detail-hero img { width: 100%; height: 100%; object-fit: cover; opacity: 0.85; }
-        .detail-hero .back {
-            position: absolute; top: 12px; left: 12px; width: 40px; height: 40px;
-            border-radius: 50%; background: rgba(0,0,0,0.7); border: 2px solid #fff;
-            color: #fff; font-size: 20px; cursor: pointer; z-index: 2;
-        }
-        .detail-hero .grad { position: absolute; inset: 0; background: linear-gradient(transparent 30%, #000); }
-        .detail-body { padding: 20px; margin-top: -60px; position: relative; }
-        .detail-body h2 { font-size: 22px; margin-bottom: 8px; text-transform: uppercase; }
-        .detail-body .meta { color: #999; font-size: 13px; margin-bottom: 16px; }
-        .detail-body .plot { line-height: 1.6; font-size: 14px; color: #ccc; margin-bottom: 24px; }
-        .detail-body .watch-btn { width: 100%; }
-
-        @media (max-width: 600px) {
-            .container { padding: 15px; }
-            .header h1 { font-size: 24px; }
-            .mode-btn { flex: 1 1 45%; }
-            .grid { gap: 6px; }
-        }
-    </style>
+  .hidden { display:none !important; }
+</style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>🎬 КИНОТЕАТР</h1>
-            <p>Смотрите вместе, одновременно</p>
-        </div>
 
-        <div id="messageContainer"></div>
+<div class="top"><h1 id="screenTitle">КАТАЛОГ</h1></div>
 
-        <div class="mode-selector">
-            <button class="mode-btn active" onclick="switchMode('catalog', event)">📽 КАТАЛОГ</button>
-            <button class="mode-btn" onclick="switchMode('create', event)">+ СОЗДАТЬ</button>
-            <button class="mode-btn" onclick="switchMode('join', event)">ПРИСОЕДИНИТЬСЯ</button>
-            <button class="mode-btn" onclick="switchMode('watch', event)">СМОТРЕТЬ</button>
-        </div>
+<!-- CATALOG -->
+<div id="s-catalog" class="screen active">
+  <div class="search">
+    <input id="q" type="text" placeholder="Поиск фильмов...">
+    <button onclick="doSearch()">→</button>
+  </div>
+  <div class="genres" id="genres"></div>
+  <div id="catalogBody"><div class="msg">ЗАГРУЗКА...</div></div>
+</div>
 
-        <!-- КАТАЛОГ -->
-        <div id="catalog" class="section active">
-            <div class="search-bar">
-                <input type="text" id="catalogQuery" placeholder="Поиск фильмов и сериалов...">
-                <button onclick="doCatalogSearch()">Найти</button>
-            </div>
-            <div class="genres" id="genreList"></div>
-            <div id="catalogContent">
-                <div class="catalog-msg">Загрузка каталога...</div>
-            </div>
-        </div>
+<!-- FILM -->
+<div id="s-film" class="screen">
+  <div class="detail-hero">
+    <button class="back" onclick="go('catalog')">←</button>
+    <img id="fPoster" src="" alt="">
+    <div class="grad"></div>
+  </div>
+  <div class="detail-body">
+    <h2 id="fTitle">—</h2>
+    <div class="meta" id="fMeta">—</div>
+    <div class="plot" id="fPlot"></div>
+    <button class="btn" onclick="createSessionForCurrent()">СОЗДАТЬ КОМНАТУ</button>
+  </div>
+</div>
 
-        <!-- СОЗДАТЬ СЕНОССИЮ -->
-        <div id="create!</" class="section">
-            <div class="hinput-group">
-                <label>Ссылка на видео</label>
-                <input type="url" id="videoUrl" placeholder="Вставьте ссылку из YouTube, VK или RuTube...">
-            </div>
-
-            <div class="input-group">
-                <label>Название сессии (опционально)</label>
-                <input type="text" id="sessionName" placeholder="Например: Вечерний просмотр с друзьями">
-            </div>
-
-            <button class="button" onclick="createSession()">🎯 СОЗДАТЬ СЕССИЮ</button>
-
-            <div class="divider"></div>
-
-            <div id="createdSession" style="display: none;">
-                <div class="code-display">
-                    <div class="label">КОД СЕССИИ (ПОДЕЛИСЬ С ДРУЗЬЯМИ)</div>
-                    <div class="code" id="sessionCode"></div>
-                    <button class="copy-btn" id="copyBtn" onclick="copyCode()">📋 СКОПИРОВАТЬ КОД</button>
-                </div>
-
-                <div class="video-info">
-                    <h2>📊 ИНФОРМАЦИЯ</h2>
-                    <p>Отправь этот код друзьям, они смогут присоединиться к сессии через кнопку "ПРИСОЕДИНИТЬСЯ"</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- ПРИСОЕДИНИТЬСЯ -->
-        <div id="join" class="section">
-            <div class="input-group">
-                <label>Введи код сессии</label>
-                <input type="text" id="joinCode" placeholder="Например: 12345" maxlength="6">
-            </div>
-
-            <button class="button" onclick="joinSession()">✅ ПРИСОЕДИНИТЬСЯ</button>
-
-            <div class="divider"></div>
-
-            <div id="joinedSession" style="display: none;">
-                <div class="video-info">
-                    <h2>✅ УСПЕШ2>
-                    <p id="joinMessage"></p>
-                </div>
-            </div>
-        </div>
-
-        <!-- СМОТРЕТЬ -->
-        <div id="watch" class="section">
-            <div class="video-player" id="videoPlayer">
-                <p style="padding: 20px; color: #999;">Видеоплеер загружается...</p>
-            </div>
-
-            <div class="video-info">
-                <h2>📺 Текущее видео</h2>
-                <p id="watchInfo">Подключитесь к сессии чтобы начать просмотр</p>
-            </div>
-
-            <button class="button secondary" onclick="switchMode('create', event)">➕ НОВАЯ СЕССИЯ</button>
-        </div>
+<!-- CREATE -->
+<div id="s-create" class="screen">
+  <div id="createForm">
+    <div class="field">
+      <label>Название комнаты</label>
+      <input id="sessName" type="text" placeholder="Вечерний просмотр">
     </div>
-
-    <div class="footer">
-        <p>© 2024 Кинотеатр | v1.1</p>
+    <div class="field">
+      <label>Фильм</label>
+      <input id="sessFilm" type="text" placeholder="Выбери из каталога (необязательно)" readonly>
     </div>
-
-    <!-- ДЕТАЛИ ФИЛЬМА -->
-    <div class="detail-overlay" id="detailOverlay">
-        <div class="detail-hero">
-            <button class="back" onclick="closeDetail()">←</button>
-            <img id="dPoster" src="">
-            <div class="grad"></div>
-        </div>
-        <div class="detail-body">
-            <h2 id="dTitle"></h2>
-            <div class="meta" id="dMeta"></div>
-            <div class="plot" id="dPlot"></div>
-            <button class="button watch-btn" onclick="useInSession()">🎯 СОЗДАТЬ СЕССИЮ ДЛЯ ЭТОГО ФИЛЬМА</button>
-        </div>
+    <button class="btn" onclick="createSession()">СОЗДАТЬ</button>
+  </div>
+  <div id="createResult" class="hidden">
+    <div class="code-box">
+      <div class="lbl">КОД КОМНАТЫ</div>
+      <div class="code" id="newCode">000000</div>
+      <button class="btn ghost" onclick="copyCode()" id="copyBtn">СКОПИРОВАТЬ</button>
     </div>
+    <div class="session-card">
+      <div class="title" id="createdTitle">—</div>
+      <div class="sub">Передай код друзьям</div>
+    </div>
+    <button class="btn ghost" onclick="resetCreate()" style="margin-top:12px">НОВАЯ КОМНАТА</button>
+  </div>
+</div>
 
-    <script>
-        const tg = window.Telegram?.WebApp;
-        tg?.ready(); tg?.expand();
+<!-- JOIN -->
+<div id="s-join" class="screen">
+  <div class="field">
+    <label>Код комнаты</label>
+    <input id="joinCode" type="tel" inputmode="numeric" maxlength="6" class="code-input" placeholder="000000">
+  </div>
+  <button class="btn" onclick="joinSession()">ВОЙТИ</button>
+  <div id="joinResult" style="margin-top:20px"></div>
+</div>
 
-        let currentFilm = null;
-        let currentGenre = "";
+<!-- ROOM -->
+<div id="s-room" class="screen"><div id="roomBody"></div></div>
 
-        // ===== Переключение режимов =====
-        function switchMode(mode, event) {
-            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-            document.getElementById(mode).classList.add('active');
-            document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
-            if (event && event.target) event.target.classList.add('active');
-        }
+<div class="nav">
+  <button data-screen="catalog" class="active" onclick="go('catalog')"><span class="ico">▦</span><span>КАТАЛОГ</span></button>
+  <button data-screen="create" onclick="go('create')"><span class="ico">＋</span><span>СОЗДАТЬ</span></button>
+  <button data-screen="join" onclick="go('join')"><span class="ico">→</span><span>ВОЙТИ</span></button>
+</div>
 
-        // ===== СОЗДАНИЕ СЕССИИ =====
-        function extractVideoId(url) {
-            if (url.includes('youtube.com') || url.includes('youtu.be')) {
-                const id = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{11})/);
-                return id ? { type: 'youtube', id: id[1] } : null;
-            }
-            if (url.includes('vk.com/video')) {
-                const id = url.match(/video(-?\d+_\d+)/);
-                return id ? { type: 'vk', id: id[1] } : null;
-            }
-            if (url.includes('rutube.ru')) {
-                const id = url.match(/video\/([\w-]+)/);
-                return id ? { type: 'rutube', id: id[1] } : null;
-            }
-            return null;
-        }
+<script>
+const tg = window.Telegram?.WebApp;
+tg?.ready(); tg?.expand();
+const USER_ID = tg?.initDataUnsafe?.user?.id || 0;
+const USERNAME = tg?.initDataUnsafe?.user?.username || 'guest';
 
-        function createSession() {
-            const url = document.getElementById('videoUrl').value;
-            const name = document.getElementById('sessionName').value || 'Просмотр видео';
+let currentFilm = null;
+let currentGenre = '';
 
-            if (!url) {
-                showMessage('❌ Вставьте ссылку на видео', 'error');
-                return;
-            }
-            const video = extractVideoId(url);
-            if (!video) {
-                showMessage('❌ Ссылка не поддерживается. Используйте YouTube, VK или RuTube', 'error');
-                return;
-            }
+const TITLES = { catalog:'КАТАЛОГ', film:'ФИЛЬМ', create:'СОЗДАТЬ', join:'ВОЙТИ', room:'КОМНАТА' };
 
-            const code = String(Math.floor(Math.random() * 900000) + 100000);
-            localStorage.setItem('sessionCode', code);
-            localStorage.setItem('sessionName', name);
-            localStorage.setItem('videoUrl', url);
-            localStorage.setItem('videoType', video.type);
-            localStorage.setItem('videoId', video.id);
+function go(screen) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('s-' + screen).classList.add('active');
+  document.querySelectorAll('.nav button').forEach(b => b.classList.toggle('active', b.dataset.screen === screen));
+  document.getElementById('screenTitle').textContent = TITLES[screen] || '';
+  window.scrollTo(0, 0);
+}
 
-            document.getElementById('sessionCode').textContent = code;
-            document.getElementById('createdSession').style.display = 'block';
-            showMessage('✅ Сессия создана! Поделись кодом с друзьями', 'success');
-        }
+// ===== CATALOG =====
+const GENRES = ['Все','боевик','комедия','драма','фантастика','ужасы','триллер','мелодрама','детектив','приключения','фэнтези','аниме'];
 
-        function joinSession() {
-            const code = document.getElementById('joinCode').value.trim();
-            if (!code) {
-                showMessage('❌ Введите код сессии', 'error');
-                return;
-            }
-            localStorage.setItem('joinedCode', code);
-            document.getElementById('joinMessage').textContent =
-                `Вы присоединились к сессии ${code}. Переходите на вкладку "СМОТРЕТЬ"`;
-            document.getElementById('joinedSession').style.display = 'block';
-            showMessage('✅ Вы присоединились к сессии!', 'success');
-        }
+function renderGenres() {
+  const el = document.getElementById('genres');
+  el.innerHTML = GENRES.map(g => `<button class="genre${g==='Все'?' active':''}" data-g="${g==='Все'?'':g}">${g}</button>`).join('');
+  el.querySelectorAll('.genre').forEach(b => {
+    b.onclick = () => {
+      el.querySelectorAll('.genre').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      currentGenre = b.dataset.g;
+      loadCatalog();
+    };
+  });
+}
 
-        function copyCode() {
-            const code = document.getElementById('sessionCode').textContent;
-            navigator.clipboard.writeText(code).then(() => {
-                const btn = document.getElementById('copyBtn');
-                btn.textContent = '✅ СКОПИРОВАНО';
-                btn.classList.add('copied');
-                setTimeout(() => {
-                    btn.textContent = '📋 СКОПИРОВАТЬ КОД';
-                    btn.classList.remove('copied');
-                }, 2000);
-            });
-        }
+function extractFilms(data) {
+  if (!data) return [];
+  if (Array.isArray(data)) return data;
+  return data.films || data.items || data.results || data.docs || [];
+}
+function fId(f) { return f.id || f.filmId || f.kinopoiskId || f.kp_id; }
+function fName(f) { return f.name || f.title || f.nameRu || f.name_ru || '—'; }
+function fPoster(f) { return f.poster || f.posterUrl || f.image || f.cover || f.coverUrl || ''; }
+function fRating(f) {
+  const r = f.rating || f.kp_rating || f.kpRating || f.imdbRating || f.score;
+  return r ? Number(r).toFixed(1) : '';
+}
+function fYear(f) { return f.year || (f.releaseDate ? String(f.releaseDate).slice(0,4) : ''); }
 
-        function showMessage(text, type) {
-            const container = document.getElementById('messageContainer');
-            const msg = document.createElement('div');
-            msg.className = `message ${type}`;
-            msg.textContent = text;
-            container.appendChild(msg);
-            setTimeout(() => msg.remove(), 4000);
-        }
+async function loadCatalog() {
+  const body = document.getElementById('catalogBody');
+  body.innerHTML = '<div class="msg">ЗАГРУЗКА...</div>';
+  try {
+    const url = '/api/catalog' + (currentGenre ? '?genre=' + encodeURIComponent(currentGenre) : '');
+    const r = await fetch(url);
+    const data = await r.json();
+    if (!data.ok) throw new Error(data.error || 'Ошибка');
+    renderFilms(extractFilms(data.films));
+  } catch (e) {
+    body.innerHTML = `<div class="msg">⚠ ${e.message}</div>`;
+  }
+}
 
-        // ===== КАТАЛОГ =====
-        const GENRES = ["Все", "боевик", "комедия", "драма", "фантастика", "ужасы", "триллер", "мелодрама", "детектив", "приключения", "фэнтези", "аниме"];
+async function doSearch() {
+  const q = document.getElementById('q').value.trim();
+  if (!q) return loadCatalog();
+  const body = document.getElementById('catalogBody');
+  body.innerHTML = '<div class="msg">ПОИСК...</div>';
+  try {
+    const r = await fetch('/api/catalog?q=' + encodeURIComponent(q));
+    const data = await r.json();
+    if (!data.ok) throw new Error(data.error);
+    renderFilms(extractFilms(data.films));
+  } catch (e) { body.innerHTML = `<div class="msg">⚠ ${e.message}</div>`; }
+}
 
-        function renderGenres() {
-            const el = document.getElementById('genreList');
-            el.innerHTML = GENRES.map(g =>
-                `<button class="genre ${g === 'Все' ? 'active' : ''}" data-g="${g === 'Все' ? '' : g}">${g}</button>`
-            ).join('');
-            el.querySelectorAll('.genre').forEach(btn => {
-                btn.onclick = () => {
-                    el.querySelectorAll('.genre').forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-                    currentGenre = btn.dataset.g;
-                    loadCatalog();
-                };
-            });
-        }
+function renderFilms(films) {
+  const body = document.getElementById('catalogBody');
+  if (!films || !films.length) { body.innerHTML = '<div class="empty-state">НИЧЕГО НЕ НАЙДЕНО</div>'; return; }
+  window.__films = films;
+  body.innerHTML = '<div class="grid">' + films.map((f, i) => {
+    const p = fPoster(f), n = fName(f), r = fRating(f);
+    return `<div class="card" data-idx="${i}">
+      ${p ? `<img src="${p}" loading="lazy" onerror="this.style.display='none'">` : ''}
+      ${r ? `<div class="r">${r}</div>` : ''}
+      <div class="t">${n}</div>
+    </div>`;
+  }).join('') + '</div>';
+  body.querySelectorAll('.card').forEach(c => {
+    c.onclick = () => openFilm(films[Number(c.dataset.idx)]);
+  });
+}
 
-        async function loadCatalog() {
-            const c = document.getElementById('catalogContent');
-            c.innerHTML = '<div class="catalog-msg"><span class="loading"></span> Загрузка...</div>';
-            try {
-                const url = '/api/catalog' + (currentGenre ? '?genre=' + encodeURIComponent(currentGenre) : '');
-                const r = await fetch(url);
-                const data = await r.json();
-                if (!data.ok) throw new Error(data.error || 'Ошибка API');
-                renderFilms(data.films);
-            } catch (e) {
-                c.innerHTML = `<div class="catalog-msg">⚠ ${e.message}<br><br><small>Проверь, установлен ли пакет kino-is и переменные окружения</small></div>`;
-            }
-        }
+async function openFilm(film) {
+  currentFilm = film;
+  document.getElementById('fPoster').src = fPoster(film);
+  document.getElementById('fTitle').textContent = fName(film);
+  document.getElementById('fMeta').textContent = [fYear(film), fRating(film)?'★ '+fRating(film):''].filter(Boolean).join('  ·  ');
+  document.getElementById('fPlot').textContent = film.description || film.plot || film.overview || 'Загрузка...';
+  go('film');
+  const id = fId(film);
+  if (!id) return;
+  try {
+    const r = await fetch('/api/film/' + id);
+    const data = await r.json();
+    if (data.ok && data.film) {
+      const f = data.film;
+      currentFilm = f;
+      document.getElementById('fPoster').src = fPoster(f) || fPoster(film);
+      document.getElementById('fTitle').textContent = fName(f);
+      document.getElementById('fMeta').textContent = [fYear(f), fRating(f)?'★ '+fRating(f):''].filter(Boolean).join('  ·  ');
+      document.getElementById('fPlot').textContent = f.description || f.plot || f.overview || '';
+    }
+  } catch(e) {}
+}
 
-        async function doCatalogSearch() {
-            const q = document.getElementById('catalogQuery').value.trim();
-            if (!q) return loadCatalog();
-            const c = document.getElementById('catalogContent');
-            c.innerHTML = '<div class="catalog-msg"><span class="loading"></span> Поиск...</div>';
-            try {
-                const r = await fetch('/api/catalog?q=' + encodeURIComponent(q));
-                const data = await r.json();
-                if (!data.ok) throw new Error(data.error || 'Ошибка API');
-                renderFilms(data.films);
-            } catch (e) {
-                c.innerHTML = `<div class="catalog-msg">⚠ ${e.message}</div>`;
-            }
-        }
+// ===== CREATE =====
+function createSessionForCurrent() {
+  if (currentFilm) {
+    document.getElementById('sessFilm').value = fName(currentFilm);
+    document.getElementById('sessName').value = fName(currentFilm);
+  }
+  go('create');
+}
 
-        function renderFilms(films) {
-            const c = document.getElementById('catalogContent');
-            if (!films || !films.length) {
-                c.innerHTML = '<div class="catalog-msg">Ничего не найдено 😔</div>';
-                return;
-            }
-            c.innerHTML = '<div class="grid">' + films.map(f => {
-                const poster = f.poster || f.posterUrl || f.image || '';
-                const rating = f.rating || f.kp_rating || '';
-                const title = f.name || f.title || f.nameRu || '';
-                const safe = JSON.stringify(f).replace(/'/g, '&#39;');
-                return `<div class="card" onclick='openFilm(${JSON.stringify(safe)})'>
-                    ${poster ? `<img src="${poster}" loading="lazy" onerror="this.style.display='none'">` : ''}
-                    ${rating ? `<div class="rating">⭐ ${rating}</div>` : ''}
-                    <div class="title">${title}</div>
-                </div>`;
-            }).join('') + '</div>';
-        }
+async function createSession() {
+  const name = document.getElementById('sessName').value.trim() || 'Комната';
+  try {
+    const r = await fetch('/api/session/create', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        name,
+        film: currentFilm ? { id: fId(currentFilm), title: fName(currentFilm), poster: fPoster(currentFilm) } : null,
+        user_id: USER_ID, username: USERNAME
+      })
+    });
+    const data = await r.json();
+    if (!data.ok) throw new Error(data.error || 'Ошибка');
+    document.getElementById('newCode').textContent = data.code;
+    document.getElementById('createdTitle').textContent = name;
+    document.getElementById('createForm').classList.add('hidden');
+    document.getElementById('createResult').classList.remove('hidden');
+  } catch (e) { tg?.showAlert?.('Ошибка: ' + e.message); }
+}
 
-        async function openFilm(filmJson) {
-            let film;
-            try { film = JSON.parse(JSON.parse(filmJson)); }
-            catch(e) { return; }
-            currentFilm = film;
-            const id = film.id || film.filmId;
+function copyCode() {
+  const code = document.getElementById('newCode').textContent;
+  navigator.clipboard.writeText(code).then(() => {
+    const b = document.getElementById('copyBtn');
+    b.textContent = 'СКОПИРОВАНО ✓';
+    setTimeout(() => b.textContent = 'СКОПИРОВАТЬ', 1800);
+  });
+}
 
-            document.getElementById('detailOverlay').classList.add('show');
-            document.getElementById('dPoster').src = film.poster || film.posterUrl || '';
-            document.getElementById('dTitle').textContent = film.name || film.title || '';
-            document.getElementById('dMeta').textContent = [film.year, film.genre, film.rating ? '⭐ ' + film.rating : ''].filter(Boolean).join(' • ');
-            document.getElementById('dPlot').textContent = film.description || film.plot || 'Загрузка описания...';
+function resetCreate() {
+  document.getElementById('sessName').value = '';
+  document.getElementById('sessFilm').value = '';
+  document.getElementById('createForm').classList.remove('hidden');
+  document.getElementById('createResult').classList.add('hidden');
+  currentFilm = null;
+}
 
-            if (id) {
-                try {
-                    const r = await fetch('/api/film/' + id);
-                    const data = await r.json();
-                    if (data.ok && data.film) {
-                        const f = data.film;
-                        currentFilm = f;
-                        document.getElementById('dPoster').src = f.poster || f.posterUrl || film.poster || '';
-                        document.getElementById('dTitle').textContent = f.name || f.title || film.name || '';
-                        document.getElementById('dMeta').textContent = [f.year, f.genre, f.rating ? '⭐ ' + f.rating : ''].filter(Boolean).join(' • ');
-                        document.getElementById('dPlot').textContent = f.description || f.plot || '';
-                    }
-                } catch(e) {}
-            }
-        }
+// ===== JOIN =====
+async function joinSession() {
+  const code = document.getElementById('joinCode').value.trim();
+  if (code.length !== 6) { tg?.showAlert?.('Код из 6 цифр'); return; }
+  try {
+    const r = await fetch('/api/session/join', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ code, user_id: USER_ID, username: USERNAME })
+    });
+    const data = await r.json();
+    if (!data.ok) throw new Error(data.error || 'Комната не найдена');
+    renderRoom(data.session);
+    go('room');
+  } catch (e) {
+    document.getElementById('joinResult').innerHTML = `<div class="msg" style="padding:20px">⚠ ${e.message}</div>`;
+  }
+}
 
-        function closeDetail() {
-            document.getElementById('detailOverlay').classList.remove('show');
-        }
+function renderRoom(s) {
+  const body = document.getElementById('roomBody');
+  body.innerHTML = `
+    <div class="code-box">
+      <div class="lbl">КОД КОМНАТЫ</div>
+      <div class="code">${s.code}</div>
+    </div>
+    <div class="session-card">
+      <div class="title">${s.name || 'Комната'}</div>
+      <div class="sub">${s.film?.title || 'Фильм не выбран'}</div>
+    </div>
+    <div class="session-card">
+      <div class="title">УЧАСТНИКИ · ${s.participants.length}</div>
+      <div class="sub">${s.participants.map(p => '@' + (p.username || 'guest')).join(' · ')}</div>
+    </div>
+    <button class="btn ghost" onclick="go('catalog')" style="margin-top:12px">В КАТАЛОГ</button>
+  `;
+}
 
-        function useInSession() {
-            const title = currentFilm?.name || currentFilm?.title || '';
-            document.getElementById('sessionName').value = title;
-            closeDetail();
-            switchMode('create', { target: document.querySelectorAll('.mode-btn')[1] });
-            showMessage('👉 Вставь ссылку на видео и создай сессию', 'success');
-        }
-
-        // ===== Инициализация =====
-        window.addEventListener('load', () => {
-            renderGenres();
-            loadCatalog();
-        });
-
-        // Enter в поиске
-        document.getElementById('catalogQuery')?.addEventListener('keydown', e => {
-            if (e.key === 'Enter') doCatalogSearch();
-        });
-    </script>
+// ===== INIT =====
+renderGenres();
+loadCatalog();
+document.getElementById('q').addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+document.getElementById('joinCode').addEventListener('input', e => {
+  e.target.value = e.target.value.replace(/\D/g, '');
+});
+</script>
 </body>
 </html>
