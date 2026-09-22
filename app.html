@@ -1,682 +1,462 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-<title>Hog 2.6 Arena</title>
-<script src="https://telegram.org/js/telegram-web-app.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<style>
-  :root {
-    --elixir: #b43dd6;
-    --hp-good: #3ddc5a;
-    --hp-bad: #dc3d3d;
-    --panel-bg: rgba(10, 10, 20, 0.75);
-  }
-  html, body {
-    margin: 0; padding: 0; width: 100%; height: 100%;
-    background: #050510;
-    overflow: hidden;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    touch-action: none;
-    user-select: none;
-  }
-  #canvas-holder { position: fixed; inset: 0; }
-  canvas { display: block; }
-
-  #top-bar {
-    position: fixed; top: 0; left: 0; right: 0;
-    display: flex; justify-content: space-between; align-items: flex-start;
-    padding: 8px 10px; box-sizing: border-box;
-    pointer-events: none;
-    z-index: 5;
-  }
-  .tower-hp {
-    background: var(--panel-bg);
-    border-radius: 8px;
-    padding: 4px 8px;
-    color: #fff;
-    font-size: 12px;
-    min-width: 90px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
-  }
-  .hp-bar-track {
-    width: 100%; height: 8px; background: #222; border-radius: 4px; overflow: hidden; margin-top: 3px;
-  }
-  .hp-bar-fill { height: 100%; background: var(--hp-good); transition: width 0.2s ease; }
-
-  #status-msg {
-    position: fixed; top: 46%; left: 50%; transform: translate(-50%, -50%);
-    background: var(--panel-bg); color: #fff; padding: 16px 24px; border-radius: 12px;
-    font-size: 20px; font-weight: 700; text-align: center; z-index: 20; display: none;
-  }
-  #status-msg button {
-    display: block; margin: 12px auto 0; padding: 8px 18px; border-radius: 8px; border: none;
-    background: var(--elixir); color: #fff; font-weight: 700; font-size: 14px;
-  }
-
-  #bottom-bar {
-    position: fixed; bottom: 0; left: 0; right: 0;
-    box-sizing: border-box; padding: 8px 8px calc(8px + env(safe-area-inset-bottom, 0px));
-    background: linear-gradient(to top, rgba(5,5,16,0.95), rgba(5,5,16,0.0));
-    z-index: 5;
-  }
-  #elixir-row { display: flex; align-items: center; margin-bottom: 8px; padding: 0 4px; }
-  #elixir-track {
-    flex: 1; height: 14px; background: #23122b; border-radius: 7px; overflow: hidden;
-    border: 1px solid #3d1f47; position: relative;
-  }
-  #elixir-fill {
-    height: 100%; background: linear-gradient(90deg, #d84bf0, var(--elixir));
-    width: 50%; transition: width 0.15s linear;
-  }
-  #elixir-num {
-    margin-left: 8px; color: var(--elixir); font-weight: 800; font-size: 15px; min-width: 24px; text-align: center;
-  }
-
-  #hand {
-    display: flex; gap: 6px; justify-content: center;
-  }
-  .card {
-    width: 64px; height: 80px; border-radius: 10px; background: #1a1a2e;
-    border: 2px solid #3a3a55; display: flex; flex-direction: column; align-items: center;
-    justify-content: center; color: #fff; font-size: 10px; text-align: center; padding: 4px 2px;
-    box-sizing: border-box; position: relative; flex-shrink: 0;
-  }
-  .card .emoji { font-size: 24px; }
-  .card .cost {
-    position: absolute; top: -6px; left: -6px; width: 20px; height: 20px; border-radius: 50%;
-    background: var(--elixir); color: #fff; font-size: 11px; font-weight: 800;
-    display: flex; align-items: center; justify-content: center; border: 1px solid #fff;
-  }
-  .card.selected { border-color: #ffd23d; box-shadow: 0 0 10px #ffd23d; transform: translateY(-6px); }
-  .card.disabled { opacity: 0.4; }
-
-  #next-card {
-    position: fixed; bottom: 108px; right: 8px; z-index: 5;
-    background: var(--panel-bg); color: #fff; font-size: 9px; padding: 3px 6px; border-radius: 6px;
-  }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clash Royale 3D</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
+            color: white;
+            width: 100%;
+            height: 100vh;
+            overflow: hidden;
+        }
+        #canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        #ui {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        #top-panel {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 40px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px 20px;
+            border-radius: 10px;
+            pointer-events: auto;
+            z-index: 100;
+        }
+        .stat {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-size: 14px;
+        }
+        .stat-value {
+            font-size: 20px;
+            font-weight: bold;
+        }
+        #bottom-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            pointer-events: auto;
+            z-index: 100;
+        }
+        #elixir-bar {
+            width: 200px;
+            height: 20px;
+            background: #333;
+            border: 2px solid #0f0;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            position: relative;
+            overflow: hidden;
+        }
+        #elixir-fill {
+            height: 100%;
+            background: #0f0;
+            width: 0%;
+            transition: width 0.2s;
+        }
+        #elixir-text {
+            position: absolute;
+            top: 2px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 12px;
+            color: white;
+        }
+        #hand {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        .card {
+            width: 60px;
+            height: 80px;
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            border: 2px solid #7f8c8d;
+            border-radius: 5px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            pointer-events: auto;
+        }
+        .card.selected {
+            border-color: #f1c40f;
+            box-shadow: 0 0 10px rgba(241, 196, 15, 0.5);
+        }
+        .card.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .card-icon {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .card-cost {
+            font-size: 12px;
+            margin-top: 4px;
+            color: #f1c40f;
+        }
+        #messages {
+            position: absolute;
+            top: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-size: 14px;
+            max-width: 300px;
+            text-align: center;
+            pointer-events: auto;
+            z-index: 50;
+        }
+    </style>
 </head>
 <body>
-
-<div id="canvas-holder"></div>
-
-<div id="top-bar">
-  <div class="tower-hp" id="enemy-hp-box">
-    <div>Враг 👑</div>
-    <div class="hp-bar-track"><div class="hp-bar-fill" id="enemy-hp-fill" style="width:100%"></div></div>
-  </div>
-  <div class="tower-hp" id="player-hp-box">
-    <div>Вы 👑</div>
-    <div class="hp-bar-track"><div class="hp-bar-fill" id="player-hp-fill" style="width:100%"></div></div>
-  </div>
-</div>
-
-<div id="status-msg">
-  <div id="status-text"></div>
-  <button id="status-btn" onclick="restartGame()">Заново</button>
-</div>
-
-<div id="next-card">Следующая: <span id="next-card-name">?</span></div>
-
-<div id="bottom-bar">
-  <div id="elixir-row">
-    <div id="elixir-track"><div id="elixir-fill"></div></div>
-    <div id="elixir-num">5</div>
-  </div>
-  <div id="hand"></div>
-</div>
-
-<script>
-/* =========================================================================
-   HOG 2.6 ARENA — упрощённая 3D-песочница в стиле Clash Royale.
-   Это прототип: юниты идут к вражеской башне и атакуют; вражеская сторона
-   управляется простым ИИ. Для настоящего PvP нужен отдельный сервер,
-   синхронизирующий состояние между двумя игроками (см. main.py — там
-   только запуск Mini App через Telegram-бота, без сетевой синхронизации).
-   ========================================================================= */
-
-const tg = window.Telegram ? window.Telegram.WebApp : null;
-if (tg) { tg.ready(); tg.expand(); }
-
-// ---------------------------------------------------------------------
-// ПОЛЕ / СЕТКА  (упрощённо: 9 клеток в ширину, 14 в длину на половину поля)
-// ---------------------------------------------------------------------
-const COLS = 9;              // клеток по X
-const ROWS_HALF = 12;        // клеток по Z на одну половину поля
-const ROWS = ROWS_HALF * 2 + 2; // + река (2 клетки)
-const CELL = 1;              // размер клетки в мировых единицах
-const FIELD_W = COLS * CELL;
-const FIELD_D = ROWS * CELL;
-const RIVER_Z0 = ROWS_HALF;              // индекс первой клетки реки
-const RIVER_Z1 = ROWS_HALF + 1;          // индекс второй клетки реки
-
-function gridToWorldX(col) { return (col - (COLS - 1) / 2) * CELL; }
-function gridToWorldZ(row)  { return (row - (ROWS - 1) / 2) * CELL; }
-
-// ---------------------------------------------------------------------
-// THREE.JS: сцена, камера, свет
-// ---------------------------------------------------------------------
-const holder = document.getElementById('canvas-holder');
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x0a0a18);
-scene.fog = new THREE.Fog(0x0a0a18, 14, 32);
-
-const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 100);
-camera.position.set(0, 13, 10.5);
-camera.lookAt(0, 0, -1);
-
-const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.shadowMap.enabled = true;
-holder.appendChild(renderer.domElement);
-
-const hemi = new THREE.HemisphereLight(0x8899ff, 0x223311, 0.9);
-scene.add(hemi);
-const sun = new THREE.DirectionalLight(0xffffff, 0.9);
-sun.position.set(6, 14, 6);
-sun.castShadow = true;
-sun.shadow.mapSize.set(1024, 1024);
-sun.shadow.camera.left = -12; sun.shadow.camera.right = 12;
-sun.shadow.camera.top = 12; sun.shadow.camera.bottom = -12;
-scene.add(sun);
-
-// Земля
-const groundGeo = new THREE.PlaneGeometry(FIELD_W + 2, FIELD_D + 2);
-const groundMat = new THREE.MeshStandardMaterial({ color: 0x3a6b34, roughness: 0.95 });
-const ground = new THREE.Mesh(groundGeo, groundMat);
-ground.rotation.x = -Math.PI / 2;
-ground.receiveShadow = true;
-scene.add(ground);
-
-// Клетки сетки (тонкие линии)
-{
-  const gridHelper = new THREE.GridHelper(Math.max(FIELD_W, FIELD_D), ROWS, 0x224422, 0x224422);
-  gridHelper.position.y = 0.01;
-  scene.add(gridHelper);
-}
-
-// Река
-const riverGeo = new THREE.PlaneGeometry(FIELD_W + 2, CELL * 2);
-const riverMat = new THREE.MeshStandardMaterial({ color: 0x2a6fb0, roughness: 0.3, metalness: 0.1 });
-const river = new THREE.Mesh(riverGeo, riverMat);
-river.rotation.x = -Math.PI / 2;
-river.position.set(0, 0.02, (gridToWorldZ(RIVER_Z0) + gridToWorldZ(RIVER_Z1)) / 2);
-scene.add(river);
-
-// Два моста (проходы через реку, слева и справа)
-function addBridge(xCol) {
-  const g = new THREE.BoxGeometry(1.4, 0.15, CELL * 2 + 0.2);
-  const m = new THREE.MeshStandardMaterial({ color: 0x8a6a44 });
-  const bridge = new THREE.Mesh(g, m);
-  bridge.position.set(gridToWorldX(xCol), 0.08, river.position.z);
-  bridge.receiveShadow = true;
-  scene.add(bridge);
-}
-addBridge(1.5);
-addBridge(COLS - 2.5);
-
-// ---------------------------------------------------------------------
-// БАШНИ
-// ---------------------------------------------------------------------
-const TOWER_MAX_HP = 2400;
-function makeTower(color) {
-  const group = new THREE.Group();
-  const base = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.9, 1.0, 1.6, 8),
-    new THREE.MeshStandardMaterial({ color })
-  );
-  base.position.y = 0.8;
-  base.castShadow = true;
-  group.add(base);
-  const roof = new THREE.Mesh(
-    new THREE.ConeGeometry(1.1, 0.8, 8),
-    new THREE.MeshStandardMaterial({ color: 0x222222 })
-  );
-  roof.position.y = 2.0;
-  group.add(roof);
-  return group;
-}
-
-const playerTower = makeTower(0x3d7fdc);
-playerTower.position.set(0, 0, gridToWorldZ(ROWS - 1.5));
-scene.add(playerTower);
-
-const enemyTower = makeTower(0xdc3d3d);
-enemyTower.position.set(0, 0, gridToWorldZ(0.5));
-scene.add(enemyTower);
-
-const towers = {
-  player: { mesh: playerTower, hp: TOWER_MAX_HP, maxHp: TOWER_MAX_HP, x: 0, z: playerTower.position.z, owner: 'player' },
-  enemy:  { mesh: enemyTower,  hp: TOWER_MAX_HP, maxHp: TOWER_MAX_HP, x: 0, z: enemyTower.position.z,  owner: 'enemy'  },
-};
-
-// ---------------------------------------------------------------------
-// КОЛОДА HOG 2.6 (упрощённые характеристики, баланс — ориентировочный)
-// ---------------------------------------------------------------------
-const CARD_DEFS = {
-  hog:       { name: 'Хог Райдер', emoji: '🐗', cost: 4, hp: 800,  dmg: 130, range: 0.6, speed: 2.6, targets: 'buildings', splash: false },
-  icegolem:  { name: 'Ледяной Голем', emoji: '🧊', cost: 2, hp: 700,  dmg: 45,  range: 0.6, speed: 1.1, targets: 'ground', splash: false },
-  skeletons: { name: 'Скелеты', emoji: '💀', cost: 1, hp: 65,   dmg: 65,  range: 0.5, speed: 2.0, targets: 'ground', splash: false, count: 3 },
-  icespirit: { name: 'Ледяной Дух', emoji: '❄️', cost: 1, hp: 90,   dmg: 40,  range: 0.6, speed: 2.4, targets: 'ground', splash: true },
-  musketeer: { name: 'Мушкетёр', emoji: '🔫', cost: 4, hp: 340,  dmg: 100, range: 5.0, speed: 1.4, targets: 'ground', splash: false },
-  cannon:    { name: 'Пушка', emoji: '🛡️', cost: 3, hp: 420,  dmg: 90,  range: 4.0, speed: 0,   targets: 'ground', splash: false, building: true },
-  log:       { name: 'Бревно', emoji: '🪵', cost: 2, spell: true, dmg: 240 },
-  fireball:  { name: 'Огн. Шар', emoji: '🔥', cost: 4, spell: true, dmg: 380, radius: 2.2 },
-};
-const DECK_ORDER = ['hog', 'icegolem', 'skeletons', 'icespirit', 'musketeer', 'cannon', 'log', 'fireball'];
-
-// Колода игрока: перемешанный цикл из 8 карт, руки по 4
-let deckQueue = shuffle([...DECK_ORDER]);
-let hand = [deckQueue.shift(), deckQueue.shift(), deckQueue.shift(), deckQueue.shift()];
-let nextCard = deckQueue.shift();
-refillDeckQueueIfNeeded();
-
-function refillDeckQueueIfNeeded() {
-  if (deckQueue.length === 0) deckQueue = shuffle([...DECK_ORDER]);
-}
-function shuffle(arr) {
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr;
-}
-
-let selectedHandIndex = null;
-
-// ---------------------------------------------------------------------
-// ЭЛИКСИР
-// ---------------------------------------------------------------------
-const ELIXIR_MAX = 10;
-const ELIXIR_REGEN_SEC = 2.8; // секунд на 1 эликсир
-let playerElixir = 5;
-let enemyElixir = 5;
-
-// ---------------------------------------------------------------------
-// ЮНИТЫ
-// ---------------------------------------------------------------------
-let units = []; // {id, def, key, owner, hp, maxHp, x, z, mesh, cooldown, isBuilding, targetUnit}
-let unitIdSeq = 1;
-
-function unitColor(owner) { return owner === 'player' ? 0x3d7fdc : 0xdc3d3d; }
-
-function spawnUnitMesh(def, owner) {
-  const group = new THREE.Group();
-  const bodyColor = unitColor(owner);
-  if (def.spell) return group; // заклинания меша не имеют
-
-  const bodyGeo = def.building
-    ? new THREE.CylinderGeometry(0.35, 0.4, 0.6, 6)
-    : new THREE.CapsuleGeometry ? new THREE.CapsuleGeometry(0.22, 0.35, 4, 8) : new THREE.SphereGeometry(0.3, 8, 8);
-  const bodyMat = new THREE.MeshStandardMaterial({ color: bodyColor });
-  const body = new THREE.Mesh(bodyGeo, bodyMat);
-  body.position.y = def.building ? 0.3 : 0.45;
-  body.castShadow = true;
-  group.add(body);
-
-  const headGeo = new THREE.SphereGeometry(0.16, 8, 8);
-  const headMat = new THREE.MeshStandardMaterial({ color: 0xffd9a0 });
-  const head = new THREE.Mesh(headGeo, headMat);
-  head.position.y = def.building ? 0.65 : 0.78;
-  group.add(head);
-
-  return group;
-}
-
-function spawnUnit(key, owner, worldX, worldZ) {
-  const def = CARD_DEFS[key];
-  if (def.spell) return null;
-  const mesh = spawnUnitMesh(def, owner);
-  mesh.position.set(worldX, 0, worldZ);
-  scene.add(mesh);
-  const unit = {
-    id: unitIdSeq++,
-    key, def, owner,
-    hp: def.hp, maxHp: def.hp,
-    x: worldX, z: worldZ,
-    mesh,
-    cooldown: 0,
-    isBuilding: !!def.building,
-  };
-  units.push(unit);
-  return unit;
-}
-
-function spawnCard(key, owner, col, row) {
-  const def = CARD_DEFS[key];
-  const wx = gridToWorldX(col);
-  const wz = gridToWorldZ(row);
-
-  if (def.spell) {
-    castSpell(key, owner, wx, wz);
-    return;
-  }
-  const count = def.count || 1;
-  for (let i = 0; i < count; i++) {
-    const offset = (i - (count - 1) / 2) * 0.5;
-    spawnUnit(key, owner, wx + offset, wz);
-  }
-}
-
-function castSpell(key, owner, wx, wz) {
-  const def = CARD_DEFS[key];
-  flashSpellEffect(wx, wz, key);
-
-  if (key === 'fireball') {
-    for (const u of units) {
-      if (u.owner === owner) continue;
-      const d = Math.hypot(u.x - wx, u.z - wz);
-      if (d <= def.radius) damageUnit(u, def.dmg);
-    }
-    for (const t of Object.values(towers)) {
-      if (t.owner === owner) continue;
-      const d = Math.hypot(t.x - wx, t.z - wz);
-      if (d <= def.radius + 0.6) damageTower(t, def.dmg * 0.5);
-    }
-  } else if (key === 'log') {
-    // Бревно катится по всей полосе (по X-диапазону возле клика), нанося урон наземным юнитам
-    for (const u of units) {
-      if (u.owner === owner || u.isBuilding) continue;
-      if (Math.abs(u.x - wx) <= 1.1 && Math.sign(u.z - wz) === Math.sign((owner === 'player') ? -1 : 1 * -1) || Math.abs(u.z - wz) < 6) {
-        if (Math.abs(u.x - wx) <= 1.1) damageUnit(u, def.dmg);
-      }
-    }
-  }
-}
-
-function flashSpellEffect(wx, wz, key) {
-  const color = key === 'fireball' ? 0xff6a00 : 0xcdb37a;
-  const radius = key === 'fireball' ? 2.2 : 1.1;
-  const ringGeo = new THREE.RingGeometry(radius * 0.7, radius, 24);
-  const ringMat = new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide, transparent: true, opacity: 0.8 });
-  const ring = new THREE.Mesh(ringGeo, ringMat);
-  ring.rotation.x = -Math.PI / 2;
-  ring.position.set(wx, 0.05, wz);
-  scene.add(ring);
-  let life = 0.4;
-  const fade = () => {
-    life -= 0.02;
-    ring.material.opacity = Math.max(0, life / 0.4);
-    ring.scale.setScalar(1 + (0.4 - life) * 1.5);
-    if (life > 0) requestAnimationFrame(fade); else scene.remove(ring);
-  };
-  fade();
-}
-
-function damageUnit(u, dmg) {
-  u.hp -= dmg;
-  if (u.hp <= 0) removeUnit(u);
-}
-
-function damageTower(t, dmg) {
-  t.hp = Math.max(0, t.hp - dmg);
-  updateTowerBars();
-  if (t.hp <= 0) endGame(t.owner === 'player' ? 'lose' : 'win');
-}
-
-function removeUnit(u) {
-  scene.remove(u.mesh);
-  units = units.filter(x => x.id !== u.id);
-}
-
-// ---------------------------------------------------------------------
-// ИГРОВОЙ ЦИКЛ: движение, атака, ИИ
-// ---------------------------------------------------------------------
-let gameOver = false;
-let lastTime = performance.now();
-
-function findNearestEnemy(u) {
-  let best = null, bestD = Infinity;
-  for (const other of units) {
-    if (other.owner === u.owner) continue;
-    if (u.def.targets === 'buildings' && !other.isBuilding) continue;
-    const d = Math.hypot(other.x - u.x, other.z - u.z);
-    if (d < bestD) { bestD = d; best = other; }
-  }
-  return { unit: best, dist: bestD };
-}
-
-function nearestEnemyTower(owner) {
-  return owner === 'player' ? towers.enemy : towers.player;
-}
-
-function crossesRiverBlocked(u, targetZ) {
-  // Юнит должен идти через мост (узкий X-коридор), если пересекает реку.
-  const z0 = gridToWorldZ(RIVER_Z0) - 0.5;
-  const z1 = gridToWorldZ(RIVER_Z1) + 0.5;
-  const crossing = (u.z > z1 && targetZ < z0) || (u.z < z0 && targetZ > z1);
-  if (!crossing) return false;
-  const bridgeXs = [gridToWorldX(1.5), gridToWorldX(COLS - 2.5)];
-  const nearBridge = bridgeXs.some(bx => Math.abs(u.x - bx) < 0.9);
-  return !nearBridge;
-}
-
-function updateUnits(dt) {
-  for (const u of units) {
-    if (u.isBuilding) {
-      // Пушка: только атакует, не двигается
-      tryAttack(u, dt);
-      continue;
-    }
-    const { unit: target } = findNearestEnemy(u);
-    let aimX, aimZ, attackTargetIsTower = false, towerRef = null;
-
-    const inRangeOfEnemyUnit = target && Math.hypot(target.x - u.x, target.z - u.z) <= (u.def.range + 0.4);
-
-    if (u.def.targets === 'ground' && target && !inRangeOfEnemyUnit) {
-      aimX = target.x; aimZ = target.z;
-    } else if (u.def.targets === 'ground' && target && inRangeOfEnemyUnit) {
-      tryAttack(u, dt, target);
-      continue;
-    } else {
-      towerRef = nearestEnemyTower(u.owner);
-      aimX = towerRef.x; aimZ = towerRef.z;
-      attackTargetIsTower = true;
-    }
-
-    const dx = aimX - u.x, dz = aimZ - u.z;
-    const dist = Math.hypot(dx, dz);
-
-    if (attackTargetIsTower && dist <= 1.3) {
-      tryAttack(u, dt, null, towerRef);
-      continue;
-    }
-
-    // Движение
-    let moveX = dx / (dist || 1);
-    let moveZ = dz / (dist || 1);
-
-    // Небольшой манёвр к ближайшему мосту, если река блокирует прямой путь
-    if (crossesRiverBlocked(u, aimZ)) {
-      const bridgeXs = [gridToWorldX(1.5), gridToWorldX(COLS - 2.5)];
-      const closestBridgeX = bridgeXs.reduce((a, b) => Math.abs(b - u.x) < Math.abs(a - u.x) ? b : a);
-      const bdx = closestBridgeX - u.x;
-      moveX = bdx / (Math.abs(bdx) || 1) * 0.6 + moveX * 0.4;
-    }
-
-    const step = u.def.speed * dt;
-    u.x += moveX * step;
-    u.z += moveZ * step;
-    u.x = Math.max(gridToWorldX(0), Math.min(gridToWorldX(COLS - 1), u.x));
-
-    u.mesh.position.set(u.x, 0, u.z);
-    const angle = Math.atan2(moveX, moveZ);
-    u.mesh.rotation.y = angle;
-  }
-}
-
-function tryAttack(u, dt, targetUnit, targetTower) {
-  u.cooldown -= dt;
-  if (u.cooldown > 0) return;
-  u.cooldown = 1.0; // 1 атака в секунду (упрощённо)
-
-  if (targetTower) {
-    damageTower(targetTower, u.def.dmg);
-  } else if (targetUnit) {
-    damageUnit(targetUnit, u.def.dmg);
-  } else if (u.isBuilding) {
-    const { unit: target, dist } = findNearestEnemy(u);
-    if (target && dist <= u.def.range) damageUnit(target, u.def.dmg);
-  }
-}
-
-// ---------------------------------------------------------------------
-// ПРОСТОЙ ИИ ВРАГА
-// ---------------------------------------------------------------------
-let aiTimer = 0;
-function updateAI(dt) {
-  aiTimer -= dt;
-  enemyElixir = Math.min(ELIXIR_MAX, enemyElixir + dt / ELIXIR_REGEN_SEC);
-  if (aiTimer > 0) return;
-  aiTimer = 2 + Math.random() * 2.5;
-
-  const affordable = DECK_ORDER.filter(k => CARD_DEFS[k].cost <= enemyElixir);
-  if (affordable.length === 0) return;
-  const key = affordable[Math.floor(Math.random() * affordable.length)];
-  const cost = CARD_DEFS[key].cost;
-  enemyElixir -= cost;
-
-  const col = 1 + Math.floor(Math.random() * (COLS - 2));
-  const row = ROWS_HALF - 2 - Math.floor(Math.random() * 2); // возле своей половины
-  spawnCard(key, 'enemy', col, row);
-}
-
-// ---------------------------------------------------------------------
-// UI: рука, эликсир, клики
-// ---------------------------------------------------------------------
-const handEl = document.getElementById('hand');
-const elixirFillEl = document.getElementById('elixir-fill');
-const elixirNumEl = document.getElementById('elixir-num');
-const nextCardNameEl = document.getElementById('next-card-name');
-
-function renderHand() {
-  handEl.innerHTML = '';
-  hand.forEach((key, idx) => {
-    const def = CARD_DEFS[key];
-    const div = document.createElement('div');
-    div.className = 'card' + (selectedHandIndex === idx ? ' selected' : '') + (def.cost > playerElixir ? ' disabled' : '');
-    div.innerHTML = `<div class="cost">${def.cost}</div><div class="emoji">${def.emoji}</div><div>${def.name}</div>`;
-    div.onclick = () => {
-      if (def.cost > playerElixir) return;
-      selectedHandIndex = (selectedHandIndex === idx) ? null : idx;
-      renderHand();
-    };
-    handEl.appendChild(div);
-  });
-  nextCardNameEl.textContent = CARD_DEFS[nextCard].emoji + ' ' + CARD_DEFS[nextCard].name;
-}
-
-function updateElixirUI() {
-  elixirFillEl.style.width = (playerElixir / ELIXIR_MAX * 100) + '%';
-  elixirNumEl.textContent = Math.floor(playerElixir);
-}
-
-function updateTowerBars() {
-  document.getElementById('player-hp-fill').style.width = (towers.player.hp / towers.player.maxHp * 100) + '%';
-  document.getElementById('enemy-hp-fill').style.width = (towers.enemy.hp / towers.enemy.maxHp * 100) + '%';
-}
-
-// Клик/тап по полю — выбор клетки для розыгрыша карты
-const raycaster = new THREE.Raycaster();
-const pointer = new THREE.Vector2();
-
-function onFieldTap(clientX, clientY) {
-  if (selectedHandIndex === null || gameOver) return;
-  const key = hand[selectedHandIndex];
-  const def = CARD_DEFS[key];
-  if (def.cost > playerElixir) return;
-
-  pointer.x = (clientX / window.innerWidth) * 2 - 1;
-  pointer.y = -(clientY / window.innerHeight) * 2 + 1;
-  raycaster.setFromCamera(pointer, camera);
-  const hit = raycaster.intersectObject(ground)[0];
-  if (!hit) return;
-
-  const col = Math.round(hit.point.x / CELL + (COLS - 1) / 2);
-  let row = Math.round(hit.point.z / CELL + (ROWS - 1) / 2);
-
-  // Игрок может ставить войска только на своей половине (кроме заклинаний — их можно кидать куда угодно)
-  if (!def.spell && row < ROWS_HALF + 2) row = ROWS_HALF + 2;
-  row = Math.max(0, Math.min(ROWS - 1, row));
-  const clampedCol = Math.max(0, Math.min(COLS - 1, col));
-
-  playerElixir -= def.cost;
-  spawnCard(key, 'player', clampedCol, row);
-
-  hand[selectedHandIndex] = nextCard;
-  nextCard = deckQueue.shift();
-  refillDeckQueueIfNeeded();
-  selectedHandIndex = null;
-  renderHand();
-  updateElixirUI();
-}
-
-renderer.domElement.addEventListener('pointerdown', (e) => onFieldTap(e.clientX, e.clientY));
-
-// ---------------------------------------------------------------------
-// КОНЕЦ ИГРЫ
-// ---------------------------------------------------------------------
-function endGame(result) {
-  if (gameOver) return;
-  gameOver = true;
-  const box = document.getElementById('status-msg');
-  const text = document.getElementById('status-text');
-  text.textContent = result === 'win' ? '🏆 Победа!' : '💀 Поражение';
-  box.style.display = 'block';
-
-  if (tg && tg.sendData) {
-    try {
-      tg.sendData(JSON.stringify({
-        result,
-        playerTowerHp: towers.player.hp,
-        enemyTowerHp: towers.enemy.hp,
-      }));
-    } catch (e) { /* sendData доступен только для ботов, открытых через reply-кнопку */ }
-  }
-}
-
-function restartGame() {
-  location.reload();
-}
-
-// ---------------------------------------------------------------------
-// RESIZE
-// ---------------------------------------------------------------------
-window.addEventListener('resize', () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-});
-
-// ---------------------------------------------------------------------
-// ГЛАВНЫЙ ЦИКЛ
-// ---------------------------------------------------------------------
-function animate() {
-  requestAnimationFrame(animate);
-  const now = performance.now();
-  const dt = Math.min(0.05, (now - lastTime) / 1000);
-  lastTime = now;
-
-  if (!gameOver) {
-    if (playerElixir < ELIXIR_MAX) {
-      playerElixir = Math.min(ELIXIR_MAX, playerElixir + dt / ELIXIR_REGEN_SEC);
-      updateElixirUI();
-      renderHand();
-    }
-    updateAI(dt);
-    updateUnits(dt);
-  }
-
-  renderer.render(scene, camera);
-}
-
-renderHand();
-updateElixirUI();
-updateTowerBars();
-animate();
-</script>
+    <div id="ui">
+        <div id="top-panel">
+            <div class="stat">
+                <span>Time</span>
+                <span class="stat-value" id="timer">3:00</span>
+            </div>
+            <div class="stat">
+                <span>Score</span>
+                <span class="stat-value" id="score">0 : 0</span>
+            </div>
+        </div>
+        <div id="messages"></div>
+        <div id="bottom-panel">
+            <div id="elixir-bar">
+                <div id="elixir-fill"></div>
+                <div id="elixir-text">0/10</div>
+            </div>
+            <div id="hand"></div>
+        </div>
+    </div>
+
+    <script>
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87ceeb);
+        scene.fog = new THREE.Fog(0x87ceeb, 50, 100);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, pixelRatio: Math.min(window.devicePixelRatio, 2) });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFShadowShadowMap;
+        document.body.appendChild(renderer.domElement);
+
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(9, 14, 11);
+        camera.lookAt(9, 16, 0);
+
+        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x8d7ae5, 0.8);
+        scene.add(hemiLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
+        dirLight.position.set(10, 20, 10);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 2048;
+        dirLight.shadow.mapSize.height = 2048;
+        dirLight.shadow.camera.far = 50;
+        scene.add(dirLight);
+
+        const groundGeom = new THREE.PlaneGeometry(18, 32);
+        const groundMat = new THREE.MeshStandardMaterial({ color: 0x3a6b34 });
+        const ground = new THREE.Mesh(groundGeom, groundMat);
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
+        scene.add(ground);
+
+        const riverGeom = new THREE.PlaneGeometry(18, 2);
+        const riverMat = new THREE.MeshStandardMaterial({ color: 0x1e90ff });
+        const river = new THREE.Mesh(riverGeom, riverMat);
+        river.rotation.x = -Math.PI / 2;
+        river.position.z = -15.5;
+        river.receiveShadow = true;
+        scene.add(river);
+
+        const bridgeGeom = new THREE.BoxGeometry(2, 0.5, 2);
+        const bridgeMat = new THREE.MeshStandardMaterial({ color: 0x8b4513 });
+        const bridge1 = new THREE.Mesh(bridgeGeom, bridgeMat);
+        bridge1.position.set(3.5, 0.25, -15.5);
+        bridge1.castShadow = true;
+        scene.add(bridge1);
+        const bridge2 = new THREE.Mesh(bridgeGeom, bridgeMat);
+        bridge2.position.set(13.5, 0.25, -15.5);
+        bridge2.castShadow = true;
+        scene.add(bridge2);
+
+        const towers = {};
+        const towerPositions = {
+            bottom: { princess_left: [3, 0, -28], princess_right: [14, 0, -28], king: [8.5, 0, -30] },
+            top: { princess_left: [3, 0, 3], princess_right: [14, 0, 3], king: [8.5, 0, 1] }
+        };
+
+        function createTower(kind, x, y, z, color, side) {
+            const group = new THREE.Group();
+            const cylinderGeom = new THREE.CylinderGeometry(kind === "king" ? 1.2 : 0.8, kind === "king" ? 1.2 : 0.8, kind === "king" ? 4 : 2.5, 16);
+            const towerMat = new THREE.MeshStandardMaterial({ color: color, metalness: 0.3, roughness: 0.4 });
+            const body = new THREE.Mesh(cylinderGeom, towerMat);
+            body.position.y = kind === "king" ? 2 : 1.25;
+            body.castShadow = true;
+            group.add(body);
+
+            const coneGeom = new THREE.ConeGeometry(kind === "king" ? 1.5 : 1, kind === "king" ? 1.5 : 1, 16);
+            const cone = new THREE.Mesh(coneGeom, towerMat);
+            cone.position.y = kind === "king" ? 3.75 : 3;
+            cone.castShadow = true;
+            group.add(cone);
+
+            group.position.set(x, y, z);
+            scene.add(group);
+
+            towers[`${side}_${kind}`] = { group: group, health_bars: [] };
+        }
+
+        createTower("princess", 3, 0, -28, 0x4a7fb5, "bottom");
+        createTower("princess", 14, 0, -28, 0x4a7fb5, "bottom");
+        createTower("king", 8.5, 0, -30, 0x4a7fb5, "bottom");
+        createTower("princess", 3, 0, 3, 0xb54a4a, "top");
+        createTower("princess", 14, 0, 3, 0xb54a4a, "top");
+        createTower("king", 8.5, 0, 1, 0xb54a4a, "top");
+
+        const units = {};
+        const unitMeshes = {};
+
+        function createUnit(id, owner, x, y) {
+            const group = new THREE.Group();
+            const capsuleGeom = new THREE.CapsuleGeometry(0.35, 0.8, 4, 8);
+            const unitColor = owner === "bottom" ? 0x5aa0e0 : 0xe05a5a;
+            const unitMat = new THREE.MeshStandardMaterial({ color: unitColor });
+            const body = new THREE.Mesh(capsuleGeom, unitMat);
+            body.castShadow = true;
+            group.add(body);
+
+            group.position.set(x, 0.5, -y);
+            scene.add(group);
+
+            const hpGeom = new THREE.PlaneGeometry(1, 0.15);
+            const hpMat = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
+            const hpBar = new THREE.Mesh(hpGeom, hpMat);
+            hpBar.position.set(0, 1.2, 0);
+            hpBar.rotation.x = -Math.PI / 2;
+            group.add(hpBar);
+
+            units[id] = { group: group, x: x, y: y, last_x: x, last_y: y, hp: 100, max_hp: 100, hpBar: hpBar };
+            unitMeshes[id] = group;
+        }
+
+        const ws_protocol = location.protocol === "https:" ? "wss" : "ws";
+        let ws = null;
+        let gameCode = null;
+        let currentSide = null;
+        let selectedCard = null;
+        let gameState = null;
+
+        const cardIcons = { hog: "🐷", musketeer: "🏹", ice_spirit: "❄", skeletons: "💀", ice_golem: "🧊", cannon: "🎯", fireball: "🔥", log: "🪵" };
+        const cardCosts = { hog: 4, musketeer: 4, ice_spirit: 1, skeletons: 1, ice_golem: 2, cannon: 3, fireball: 4, log: 2 };
+
+        async function createGame() {
+            const res = await fetch("/api/game/create", { method: "POST" });
+            const data = await res.json();
+            gameCode = data.code;
+            await joinGame();
+        }
+
+        async function joinGame() {
+            if (!gameCode) {
+                const params = new URLSearchParams(location.search);
+                gameCode = params.get("code");
+            }
+            if (!gameCode) {
+                await createGame();
+                return;
+            }
+
+            const tg = window.Telegram?.WebApp;
+            const userId = tg?.initDataUnsafe?.user?.id || Math.floor(Math.random() * 1000000);
+            const username = tg?.initDataUnsafe?.user?.username || "Player";
+
+            const res = await fetch("/api/game/join", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ code: gameCode, user_id: userId, username: username })
+            });
+            const data = await res.json();
+            if (data.ok) {
+                currentSide = data.side;
+                connectWebSocket();
+            }
+        }
+
+        function connectWebSocket() {
+            ws = new WebSocket(`${ws_protocol}://${location.host}/ws/game/${gameCode}`);
+            ws.onmessage = (event) => {
+                const msg = JSON.parse(event.data);
+                if (msg.type === "state") {
+                    gameState = msg.state;
+                    updateUI();
+                }
+            };
+        }
+
+        function updateUI() {
+            if (!gameState) return;
+
+            const timer = gameState.timer;
+            const minutes = Math.floor(timer / 60);
+            const seconds = timer % 60;
+            document.getElementById("timer").textContent = `${minutes}:${seconds.toString().padStart(2, "0")}`;
+
+            const crowns = gameState.crowns;
+            document.getElementById("score").textContent = `${crowns.bottom} : ${crowns.top}`;
+
+            const player = gameState.players[currentSide];
+            if (player) {
+                const elixir = player.elixir;
+                const pct = (elixir / 10) * 100;
+                document.getElementById("elixir-fill").style.width = pct + "%";
+                document.getElementById("elixir-text").textContent = `${Math.floor(elixir)}/10`;
+
+                const handDiv = document.getElementById("hand");
+                handDiv.innerHTML = "";
+                player.hand.forEach((card, idx) => {
+                    const cardEl = document.createElement("div");
+                    cardEl.className = "card";
+                    if (selectedCard === idx) cardEl.classList.add("selected");
+                    if (elixir < cardCosts[card]) cardEl.classList.add("disabled");
+
+                    cardEl.innerHTML = `<div class="card-icon">${cardIcons[card] || "?"}</div><div class="card-cost">${cardCosts[card]}</div>`;
+                    cardEl.addEventListener("click", () => {
+                        selectedCard = selectedCard === idx ? null : idx;
+                        updateUI();
+                    });
+                    handDiv.appendChild(cardEl);
+                });
+            }
+
+            for (const unitId in gameState.units) {
+                const serverUnit = gameState.units.find(u => u.id === unitId);
+                if (!serverUnit) continue;
+
+                if (!units[unitId]) {
+                    createUnit(unitId, serverUnit.owner, serverUnit.x, serverUnit.y);
+                }
+
+                const localUnit = units[unitId];
+                localUnit.last_x = localUnit.x;
+                localUnit.last_y = localUnit.y;
+                localUnit.x = serverUnit.x;
+                localUnit.y = serverUnit.y;
+                localUnit.hp = serverUnit.hp;
+                localUnit.max_hp = serverUnit.max_hp;
+
+                const hpRatio = Math.max(0, localUnit.hp / localUnit.max_hp);
+                localUnit.hpBar.scale.x = hpRatio;
+                if (hpRatio > 0.5) localUnit.hpBar.material.color.setHex(0x00ff00);
+                else if (hpRatio > 0.25) localUnit.hpBar.material.color.setHex(0xffff00);
+                else localUnit.hpBar.material.color.setHex(0xff0000);
+            }
+
+            for (const unitId in units) {
+                if (!gameState.units.find(u => u.id === unitId)) {
+                    scene.remove(units[unitId].group);
+                    delete units[unitId];
+                    delete unitMeshes[unitId];
+                }
+            }
+        }
+
+        function animateUnits() {
+            for (const unitId in units) {
+                const unit = units[unitId];
+                const alpha = 0.8;
+                const interpX = unit.last_x + (unit.x - unit.last_x) * alpha;
+                const interpY = unit.last_y + (unit.y - unit.last_y) * alpha;
+                unit.group.position.x = interpX;
+                unit.group.position.z = -interpY;
+            }
+        }
+
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        window.addEventListener("click", (event) => {
+            if (selectedCard === null || !gameState || !gameState.players[currentSide]) return;
+
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+            const intersect = new THREE.Vector3();
+            raycaster.ray.intersectPlane(plane, intersect);
+
+            const cellX = intersect.x;
+            const cellY = -intersect.z;
+
+            if (cellX < 0 || cellX > 18 || cellY < 0 || cellY > 32) return;
+
+            const card = gameState.players[currentSide].hand[selectedCard];
+            if (gameState.players[currentSide].elixir < cardCosts[card]) return;
+
+            ws.send(JSON.stringify({
+                type: "play_card",
+                side: currentSide,
+                card_id: selectedCard,
+                x: cellX,
+                y: cellY
+            }));
+
+            selectedCard = null;
+            updateUI();
+        });
+
+        window.addEventListener("resize", () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        async function animate() {
+            requestAnimationFrame(animate);
+            animateUnits();
+            renderer.render(scene, camera);
+        }
+
+        joinGame();
+        animate();
+    </script>
 </body>
 </html>
